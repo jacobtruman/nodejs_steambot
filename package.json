@@ -1,0 +1,20 @@
+{
+  "name": "nodejs_steambot",
+  "version": "0.1.0",
+  "description": "NodeJS Steambot",
+  "main": "index.js",
+  "dependencies": {
+    "logger": "~0.1.0",
+    "mkdirp": "~0.3.5",
+    "prompt": "~0.2.11",
+    "steam": "~0.6.1",
+    "steam-trade": "~0.2.0"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": "",
+  "author": "Jacob Truman",
+  "license": "BSD"
+}
