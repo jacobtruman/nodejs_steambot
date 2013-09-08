@@ -44,6 +44,16 @@ var bot = new steam.SteamClient();
 var trade = new SteamTrade();
 var client;
 
+/**
+The mode of the bot
+options include:
+	give - bot puts up all non-metal/non-crate items
+	donate - bot accepts whatever is put up by the other user
+	sell - bot is selling item(s); only accepts metal and puts up *item(s)*
+	buy - bot is buying item(s); only accepts *item(s)* and puts up metal
+*/
+var mode;
+
 // inventory vars
 var inventory;
 var tradeItems = []; // array of items to buy/sell
@@ -283,6 +293,7 @@ trade.on('end', function(result) {
 			break;
 	}
 	bot.sendMessage(bot.steamID, msg, steam.EChatEntryType.ChatMsg);
+	//sendEmail("", "");
 });
 
 trade.on('ready', function() {
@@ -363,7 +374,7 @@ trade.on('chatMsg', function(msg) {
 			});
 			trade.addItems(nonScrap);
 		}
-	}
+	} else if 
 });
 
 // EXAMPLE USAGE
