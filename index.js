@@ -52,7 +52,7 @@ options include:
 	sell - bot is selling item(s); only accepts metal and puts up *item(s)*
 	buy - bot is buying item(s); only accepts *item(s)* and puts up metal
 */
-var mode = null;
+var theMode = null;
 
 // inventory vars
 var inventory;
@@ -62,12 +62,16 @@ var scrap = []; // array of scrap
 var reclaimed = []; // array of reclaimed
 var refined = []; // array of refined
 
+var scrapAdded = [];
+var reclaimedAdded = [];
+var refinedAdded = [];
+
 // items added
 var addedItem = [];
 var addedScrap = 0;
+var totalMetal = 0;
 
 // misc vars
-var buysell;
 var value;
 
 // bot debug stuff
@@ -173,6 +177,7 @@ bot.on('webSessionID', function(sessionID) {
 				refined = inv.filter(function(item) {
 					return item.name == 'Refined Metal';
 				});
+				totalMetal = scrap.length + (reclaimed.length * 3) + (refined.length * 9);
 				tradeItems = inv.filter(function(item) {
 					return item.name == config.bot.item;
 				});
@@ -210,61 +215,72 @@ bot.on('sessionStart', function(steamid){
 trade.on('offerChanged', function(added, item) {
 	myLog.warning('They ' + (added ? 'added ' : 'removed ') + item.name);
 	if (added) {
-		var toAdd = 0;
 		if(item.name.indexOf("Metal") >= 0) {
-			if(mode == null) {
-				mode = "sell";
+			if(theMode == null) {
+				setMode("sell");
 				myLog.warning('They want ' + config.bot.item);
 			}
+		} else if(theMode == null && item.name == config.bot.item) {
+			setMode("buy");
+		} else {
+			trade.chatMsg("I only accept metal or " + config.bot.item + "(s)");
+			myLog.warning("Added unsupported item");
+		}
+
+		if(theMode == "sell") {
 			// TODO: make sure I have enough items
 			toggleMetal(item.name, "add");
 			if(addedScrap < getSaleScrapRequired()) {
 				myLog.warning("Not enough yet: " + getSaleScrapRequired());
 			}
 			else {
-				myLog.warning("BOOM - got enough");
-				// add item
-			}
-		} else if(mode == null && item.name == config.bot.item) {
-			mode = "buy";
-			// TODO: make sure I have enough metal
-		} else {
-			trade.chatMsg("I only accept metal or " + config.bot.item + "(s)");
-			myLog.warning("Added unsupported item");
-		}
-		console.log(mode);
-		/*
-		toAdd = Math.floor(addedScrap / config.bot.sale_price) - addedItem.length;
-		toAddRem = addedScrap % config.bot.sale_price;
-		if(toAdd > 0) {
-			if (toAdd > (tradeItems.length - addedItem.length)) {
-				trade.chatMsg("I don't have enough " + config.bot.item + "(s) to cover that amount of metal - you can overpay if you like");
-				myLog.warning('Not enough scrap for ' + toAdd + ' units of metal');
-			} else {
-				myLog.warning('Adding ' + toAdd + ' ' + config.bot.item + '(s)');
 				var newItem = [];
-				for (var i = toAdd; i > 0; i--) {
+				myLog.warning("BOOM - got enough");
+				if(tradeItems.length > 0) {
 					newItem.push(tradeItems[addedItem.length]);
 					addedItem.push(newItem[newItem.length - 1]);
+					trade.addItems(newItem);
 				}
-				trade.addItems(newItem);
 			}
-		} else {
-			myLog.warning('Not enough metal added yet');
+		} else if(theMode == "buy") {
+			// TODO: make sure I have enough metal
+			var toBeAdded = [];
+			if(totalMetal >= getPurchaseScrapRequired()) {
+				while(addedScrap < getPurchaseScrapRequired()) {
+					myLog.warning("Not enough yet: " + getPurchaseScrapRequired());
+					if(getPurchaseScrapRequired() - addedScrap >= 9 && refined.length > 0) {
+						toBeAdded.push(toggleMetal("Refined Metal", "add"));
+					} else if(getPurchaseScrapRequired() - addedScrap >= 3 && reclaimed.length > 0) {
+						toBeAdded.push(toggleMetal("Reclaimed Metal", "add"));
+					} else if(scrap.length > 0) {
+						toBeAdded.push(toggleMetal("Scrap Metal", "add"));
+					}
+				}
+				trade.addItems(toBeAdded);
+			}
+		} else if(theMode == "donate") {
+			// do nothing
+		} else if(theMode == "give") {
+			// do nothing
 		}
-		*/
 	} else if (!added) {
-		var toRemove = 0;
-		toggleMetal(item.name, "remove");
-		console.log(mode);
-
-		addedScrap -= toRemove;
-		toRemove = addedItem.length - Math.floor(addedScrap / config.bot.sale_price);
-		if(addedItem.length >= toRemove) {
-			myLog.warning('Removing ' + toRemove + ' ' + config.bot.item + '(s)');
-			for (var i = toRemove; i > 0; i--) {
-				var itemsToRemove = addedItem.pop();
-				trade.removeItem(itemsToRemove);
+		if(theMode == "buy") {
+			if(addedScrap >= getPurchaseScrapRequired()) {
+				var countToBeRemoved = getPurchaseScrapRequired();
+				var toBeRemoved = [];
+				while(countToBeRemoved > 0) {
+					if(countToBeRemoved >= 9 && refinedAdded.length > 0) {
+						toBeRemoved.push(toggleMetal("Refined Metal", "remove"));
+						countToBeRemoved -= 9;
+					} else if(countToBeRemoved >= 3 && reclaimedAdded.length > 0) {
+						toBeRemoved.push(toggleMetal("Reclaimed Metal", "remove"));
+						countToBeRemoved -= 3;
+					} else if(countToBeRemoved > 0 && scrapAdded.length > 0) {
+						toBeRemoved.push(toggleMetal("Scrap Metal", "remove"));
+						countToBeRemoved -= 1;
+					}
+				}
+				trade.removeItems(toBeRemoved);
 			}
 		}
 	}
@@ -284,33 +300,49 @@ function getScrapRequired(val) {
 	return Math.ceil(val * 9);
 }
 
-function doIHaveEnoughMetal() {
-	if((scrap.length + (reclaimed.length * 3) + (refined.length * 9)) >= getPurchaseScrapRequired()) {
-		return true;
-	}
-}
-
 function toggleMetal(name, action) {
+	var tradeMetal;
+	var tradeMetalAdded;
 	switch (name) {
 		case 'Scrap Metal':
+			tradeMetal = scrap;
+			tradeMetalAdded = scrapAdded;
 			value = 1;
 			break;
 		case 'Reclaimed Metal':
+			tradeMetal = reclaimed;
+			tradeMetalAdded = reclaimedAdded;
 			value = 3;
 			break;
 		case 'Refined Metal':
+			tradeMetal = refined;
+			tradeMetalAdded = refinedAdded;
 			value = 9;
 			break;
 	}
-	console.log(action);
+
 	if(action == "add") {
+		myLog.warning("Adding "+name);
 		addedScrap += value;
+		if(theMode == "buy") {
+			tradeMetalAdded.push(tradeMetal[addedItem.length]);
+			addedItem.push(tradeMetal[addedItem.length]);
+			return tradeMetal[addedItem.length];
+		}
 	} else {
+		myLog.warning("Removing "+name);
 		addedScrap -= value;
+		if(theMode == "buy") {
+			var removeItem = tradeMetalAdded.pop();
+			addedItem.splice(addedItem.indexOf(removeItem), 1);
+			return removeItem;
+		}
 	}
-	if(mode == "sell" && addedScrap == 0) {
-		mode = null;
+	// reset the mode if all scrap is removed
+	if(theMode == "buy" && addedScrap == 0) {
+		setMode(null);
 	}
+	console.log(theMode);
 }
 
 trade.on('end', function(result) {
@@ -355,14 +387,19 @@ trade.on('ready', function() {
 function validateTrade() {
 	myLog.warning('Validating trade');
 
-	//console.log(trade.themAssets);
-	//console.log(addedItem);
-
-	if(getCounts(trade.themAssets) < addedItem.length * config.bot.sale_price) {
-		myLog.error('Careful, it looks like they are trying to screw you');
-	} else if(getCounts(trade.themAssets) > addedItem.length * config.bot.sale_price) {
-		myLog.info('They are overpaying - warn them');
-		trade.chatMsg('It looks like you added too much, you can overpay if you want to');
+	if(theMode == "sell") {
+		if(getCounts(trade.themAssets) < addedItem.length * config.bot.sale_price) {
+			myLog.error('Careful, it looks like they are trying to screw you');
+		} else if(getCounts(trade.themAssets) > addedItem.length * config.bot.sale_price) {
+			myLog.info('They are overpaying - warn them');
+			trade.chatMsg('It looks like you added too much, you can overpay if you want to');
+		}
+	} else if(theMode == "buy") {
+		// make sure the correct number of items have been added
+	} else if(theMode == "give") {
+		// nothing to validate
+	} else if(theMode == "donate") {
+		// nothing to validate
 	}
 
 	return true;
@@ -405,10 +442,15 @@ function getCounts(itemList) {
 	return addedMetalCount;
 }
 
+function setMode(mode) {
+	theMode = mode;
+	myLog.info("MODE CHANGED TO \""+theMode+"\"");
+}
+
 trade.on('chatMsg', function(msg) {
 	myLog.chat("(trade) " + msg);
 	if (msg == 'give') {
-		mode = "give";
+		setMode("give");
 		myLog.warning('Asking for all non-metal and non-crate items');
 		if(isAdmin(client)) {
 			myLog.warning('Admin');
@@ -418,7 +460,7 @@ trade.on('chatMsg', function(msg) {
 			trade.addItems(nonScrap);
 		}
 	} else if(msg == 'donate') {
-		mode = "donate";
+		setMode("donate");
 	}
 });
 
