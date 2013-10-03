@@ -8,7 +8,7 @@
     "mkdirp": "~0.3.5",
     "prompt": "~0.2.11",
     "steam": "~0.6.4",
-    "steam-trade": "~0.2.0"
+    "steam-trade": "git://github.com/seishun/node-steam-trade.git"
   },
   "devDependencies": {},
   "scripts": {
