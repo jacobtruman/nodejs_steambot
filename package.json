@@ -4,10 +4,10 @@
   "description": "NodeJS Steambot",
   "main": "index.js",
   "dependencies": {
-    "logger": "~0.1.0",
+    "tru-logger": "~0.0.1",
     "mkdirp": "~0.3.5",
     "prompt": "~0.2.11",
-    "steam": "~0.6.1",
+    "steam": "~0.6.4",
     "steam-trade": "~0.2.0"
   },
   "devDependencies": {},
