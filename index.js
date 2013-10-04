@@ -70,6 +70,7 @@ var refinedAdded = [];
 var addedItem = [];
 var addedScrap = 0;
 var totalMetal = 0;
+var theyAdded = [];
 
 // misc vars
 var value;
@@ -222,7 +223,7 @@ trade.on('offerChanged', function(added, item) {
 			}
 		} else if(theMode == null && item.name == config.bot.item) {
 			setMode("buy");
-		} else {
+		} else if(item.name.indexOf("Metal") >= 0 && item.name == config.bot.item) {
 			trade.chatMsg("I only accept metal or " + config.bot.item + "(s)");
 			myLog.warning("Added unsupported item");
 		}
@@ -243,6 +244,7 @@ trade.on('offerChanged', function(added, item) {
 				}
 			}
 		} else if(theMode == "buy") {
+			theyAdded.push(item);
 			// TODO: make sure I have enough metal
 			var toBeAdded = [];
 			if(totalMetal >= getPurchaseScrapRequired()) {
@@ -265,6 +267,7 @@ trade.on('offerChanged', function(added, item) {
 		}
 	} else if (!added) {
 		if(theMode == "buy") {
+			theyAdded.pop();
 			if(addedScrap >= getPurchaseScrapRequired()) {
 				var countToBeRemoved = getPurchaseScrapRequired();
 				var toBeRemoved = [];
@@ -293,7 +296,8 @@ function getSaleScrapRequired() {
 
 function getPurchaseScrapRequired() {
 	// multiply by nine and round up
-	return getScrapRequired(config.bot.purchase_price);
+	var multiplier = theyAdded.length > 0 ? theyAdded.length : 1;
+	return getScrapRequired(config.bot.purchase_price) * multiplier;
 }
 
 function getScrapRequired(val) {
