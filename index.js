@@ -301,6 +301,7 @@ function getScrapRequired(val) {
 }
 
 function toggleMetal(name, action) {
+	var itemToAdd;
 	var tradeMetal;
 	var tradeMetalAdded;
 	switch (name) {
@@ -325,9 +326,10 @@ function toggleMetal(name, action) {
 		myLog.warning("Adding "+name);
 		addedScrap += value;
 		if(theMode == "buy") {
-			tradeMetalAdded.push(tradeMetal[addedItem.length]);
-			addedItem.push(tradeMetal[addedItem.length]);
-			return tradeMetal[addedItem.length];
+			itemToAdd = tradeMetal.pop();
+			tradeMetalAdded.push(itemToAdd);
+			addedItem.push(itemToAdd);
+			return itemToAdd;
 		}
 	} else {
 		myLog.warning("Removing "+name);
@@ -335,6 +337,7 @@ function toggleMetal(name, action) {
 		if(theMode == "buy") {
 			var removeItem = tradeMetalAdded.pop();
 			addedItem.splice(addedItem.indexOf(removeItem), 1);
+			tradeMetal.push(removeItem);
 			return removeItem;
 		}
 	}
