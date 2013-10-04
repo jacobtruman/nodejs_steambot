@@ -1,6 +1,6 @@
 // requires
 var fs = require('fs');
-var logger = require('logger');
+var logger = require('tru-logger');
 var steam = require('steam');
 var SteamTrade = require('steam-trade');
 var mkdirp = require('mkdirp');
