@@ -235,12 +235,14 @@ trade.on('offerChanged', function(added, item) {
 				myLog.warning("Not enough yet: " + getSaleScrapRequired());
 			}
 			else {
-				var newItem = [];
+				var newItem;
+				var newItems = [];
 				myLog.warning("BOOM - got enough");
 				if(tradeItems.length > 0) {
-					newItem.push(tradeItems[addedItem.length]);
-					addedItem.push(newItem[newItem.length - 1]);
-					trade.addItems(newItem);
+					newItem = toggleItem("add");
+					newItems.push(newItem);
+					addedItem.push(newItem);
+					trade.addItems(newItems);
 				}
 			}
 		} else if(theMode == "buy") {
@@ -285,9 +287,29 @@ trade.on('offerChanged', function(added, item) {
 				}
 				trade.removeItems(toBeRemoved);
 			}
+		} else if(theMode == "sell") {
+			trade.removeItem(toggleItem("remove"));
 		}
 	}
+	console.log(theMode);
 });
+
+function toggleItem(action) {
+	if(action == "add") {
+		if(tradeItems.length > 0) {
+			thisItem = tradeItems.pop();
+		} else {
+			myLog.warning("No more items to add");
+		}
+	} else if (action == "remove") {
+		if(addedItem.length <= 0) {
+			thisItem = addedItem.pop();
+			tradeItems.push(thisItem);
+		}
+	}
+	
+	return thisItem;
+}
 
 function getSaleScrapRequired() {
 	// multiply by nine and round up
@@ -305,9 +327,9 @@ function getScrapRequired(val) {
 }
 
 function toggleMetal(name, action) {
-	var itemToAdd;
-	var tradeMetal;
-	var tradeMetalAdded;
+	var thisItem; // the item to be added or removed
+	var tradeMetal; // array of the type of metal to be added or removed
+	var tradeMetalAdded; // array of the type of metal to be added to or removed from
 	switch (name) {
 		case 'Scrap Metal':
 			tradeMetal = scrap;
@@ -330,26 +352,25 @@ function toggleMetal(name, action) {
 		myLog.warning("Adding "+name);
 		addedScrap += value;
 		if(theMode == "buy") {
-			itemToAdd = tradeMetal.pop();
-			tradeMetalAdded.push(itemToAdd);
-			addedItem.push(itemToAdd);
-			return itemToAdd;
+			thisItem = tradeMetal.pop();
+			tradeMetalAdded.push(thisItem);
+			addedItem.push(thisItem);
 		}
-	} else {
+	} else if(action == "remove") {
 		myLog.warning("Removing "+name);
 		addedScrap -= value;
 		if(theMode == "buy") {
-			var removeItem = tradeMetalAdded.pop();
-			addedItem.splice(addedItem.indexOf(removeItem), 1);
-			tradeMetal.push(removeItem);
-			return removeItem;
+			thisItem = tradeMetalAdded.pop();
+			addedItem.splice(addedItem.indexOf(thisItem), 1);
+			tradeMetal.push(thisItem);
 		}
 	}
 	// reset the mode if all scrap is removed
 	if(theMode == "buy" && addedScrap == 0) {
 		setMode(null);
 	}
-	console.log(theMode);
+
+	return thisItem;
 }
 
 trade.on('end', function(result) {
@@ -382,8 +403,9 @@ trade.on('ready', function() {
   trade.ready(function() {
   	if(validateTrade()) {
 		myLog.warning('Confirming');
-    	trade.confirm();
-    	//trade.cancel();
+		trade.confirm();
+		// reset theMode
+		theMode = null;
   	} else {
   		myLog.error('Something went wrong with the trade, canceling');
   		trade.cancel();
