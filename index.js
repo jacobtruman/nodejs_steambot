@@ -208,8 +208,8 @@ bot.on('webSessionID', function(sessionID) {
 			cookie = cookies[key];
 			myLog.info('\tGot a new cookie: '+cookie);
 			trade.setCookie(cookie);
-			loadInventory(false);
 		}
+		loadInventory(bot.setPersonaState(steam.EPersonaState.Online));
 	});
 });
 
@@ -224,7 +224,7 @@ bot.on('sessionStart', function(steamid){
 	myLog.warning("Trade accepted with " + bot.users[steamid].playerName);
 
 	// reload the inventory
-	loadInventory(true, function(res1) {
+	loadInventory(function(res1) {
 		trade.open(steamid, function(res2) {
 			if(config.bot.purchase_price > 0 && config.bot.sale_price > 0) {
 				buysell = "buying/selling";
@@ -393,22 +393,38 @@ function isTradeItem(item) {
 	}
 }
 
-function loadInventory(reload, callback) {
+function loadInventory(callback) {
 	myLog.info("LOADING INVENTORY");
 	trade.loadInventory(inventoryType, 2, function(inv) {
 		inventory = inv;
-		if(!reload) {
-			// set status
-			bot.setPersonaState(steam.EPersonaState.Online);
-		}
 		// get objects from inventory
-		getMetalFromInv(inv);
-		getTradeItemsFromInv(inv);
-		getCratesFromInv(inv);
+		getMetalFromInv(inventory);
+		getTradeItemsFromInv(inventory);
+		getCratesFromInv(inventory);
+		checkGlobalCounts();
 		if(typeof(callback) == "function") {
 			callback(true);
 		}
 	});
+}
+
+function checkGlobalCounts() {
+	myLog.warning("\tTrade Items: " + tradeItems.length);
+	myLog.warning("\tRefined Metal: " + refined.length);
+	myLog.warning("\tReclaimed Metal: " + reclaimed.length);
+	myLog.warning("\tScrap Metal: " + scrap.length);
+
+	myLog.warning("\tInventory: " + inventory.length);
+	myLog.warning("\tCrates: " + crates.length);
+
+	myLog.warning("\tScrap Added:" + scrapAdded.length);
+	myLog.warning("\tReclaimed Added:" + reclaimedAdded.length);
+	myLog.warning("\tRefined Added:" + refinedAdded.length);
+
+	myLog.warning("\tItems Added:" + addedItem.length);
+	myLog.warning("\tAdded Scrap: " + addedScrap);
+	myLog.warning("\tMetal Added: " + totalMetal);
+	myLog.warning("\tThey Added: " + theyAdded.length);
 }
 
 function getCratesFromInv(inv) {
@@ -603,9 +619,10 @@ function reset() {
 	refinedAdded.length = 0;
 
 	addedItem.length = 0;
-	addedScrap.length = 0;
-	totalMetal.length = 0;
 	theyAdded.length = 0;
+
+	addedScrap = 0;
+	totalMetal = 0;
 
 	setMode(null, true);
 }
