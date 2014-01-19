@@ -10,6 +10,7 @@ var SteamTrade = require('steam-trade');
 var mkdirp = require('mkdirp');
 var nodemailer = require("nodemailer");
 var mysql = require('mysql');
+var tfprices = require('tfprices');
 
 /*var connection = mysql.createConnection({
   host     : 'localhost',
@@ -89,6 +90,9 @@ var theyAdded = [];
 
 // misc vars
 var value;
+var itemSalePrice = 1000;
+// amount of margin in scrap
+var itemSaleMargin = 2;
 
 /**
 Logic
@@ -109,6 +113,8 @@ if(fs.existsSync(configFile)) {
 if(config.username == undefined) {
 	throw new Error("Please specify username");
 }
+
+var prices = new tfprices(config.backpacktf_key);
 
 // try to login with sentry file
 sentryFile = 'sentries/sentryfile.' + config.username;
@@ -242,91 +248,94 @@ bot.on('sessionStart', function(steamid){
 
 // trade logic
 trade.on('offerChanged', function(added, item) {
-	myLog.warning('They ' + (added ? 'added ' : 'removed ') + item.name);
-	if (added) {
-		if(item.name.indexOf("Metal") >= 0) {
-			if(theMode == null) {
-				setMode("sell");
-				myLog.warning('They want ' + config.bot.item);
+	prices.getItemPrice(item.app_data.def_index, function() {
+		itemSalePrice = prices.price;
+		myLog.warning('They ' + (added ? 'added ' : 'removed ') + item.name);
+		if (added) {
+			if(item.name.indexOf("Metal") >= 0) {
+				if(theMode == null) {
+					setMode("sell");
+					myLog.warning('They want ' + config.bot.item);
+				}
+			} else if(theMode == null && isTradeItem(item)) {
+				setMode("buy");
+			} else if(item.name.indexOf("Metal") >= 0 && isTradeItem(item)) {
+				trade.chatMsg("I only accept metal or " + config.bot.item + "(s)");
+				myLog.warning("Added unsupported item");
 			}
-		} else if(theMode == null && isTradeItem(item)) {
-			setMode("buy");
-		} else if(item.name.indexOf("Metal") >= 0 && isTradeItem(item)) {
-			trade.chatMsg("I only accept metal or " + config.bot.item + "(s)");
-			myLog.warning("Added unsupported item");
-		}
 
-		if(theMode == "sell") {
-			if(tradeItems.length > 0) {
-				toggleMetal(item.name, "add");
-				console.log(addedScrap);
-				if(addedScrap < getSaleScrapRequired()) {
-					myLog.warning("Not enough yet: " + getSaleScrapRequired());
-				} else {
-					var newItem;
-					var newItems = [];
-					myLog.warning("BOOM - got enough");
-					newItem = toggleItem("add");
-					newItems.push(newItem);
-					addedItem.push(newItem);
-					trade.addItems(newItems);
-				}
-			}
-		} else if(theMode == "buy") {
-			theyAdded.push(item);
-			// don't add metal unless they added a trade item
-			if(isTradeItem(item)) {
-				var toBeAdded = [];
-				if(totalMetal >= getPurchaseScrapRequired()) {
-					while(addedScrap < getPurchaseScrapRequired()) {
-						myLog.warning("Not enough yet: " + getPurchaseScrapRequired());
-						if(getPurchaseScrapRequired() - addedScrap >= 9 && refined.length > 0) {
-							toBeAdded.push(toggleMetal("Refined Metal", "add"));
-						} else if(getPurchaseScrapRequired() - addedScrap >= 3 && reclaimed.length > 0) {
-							toBeAdded.push(toggleMetal("Reclaimed Metal", "add"));
-						} else if(scrap.length > 0) {
-							toBeAdded.push(toggleMetal("Scrap Metal", "add"));
-						}
-					}
-					trade.addItems(toBeAdded);
-				}
-			}
-		} else if(theMode == "donate") {
-			// do nothing
-		} else if(theMode == "give") {
-			// do nothing
-		}
-	} else if (!added) {
-		if(theMode == "buy") {
-			theyAdded.splice(theyAdded.indexOf(item), 1);
-			// don't remove metal unless they removed a trade item
-			if(isTradeItem(item)) {
-				if(addedScrap >= getPurchaseScrapRequired()) {
-					var countToBeRemoved = getPurchaseScrapRequired();
-					var toBeRemoved = [];
-					var itemName;
-					while(countToBeRemoved > 0) {
-						if(countToBeRemoved >= 9 && refinedAdded.length > 0) {
-							itemName = "Refined Metal";
-							countToBeRemoved -= 9;
-						} else if(countToBeRemoved >= 3 && reclaimedAdded.length > 0) {
-							itemName = "Reclaimed Metal";
-							countToBeRemoved -= 3;
-						} else if(countToBeRemoved > 0 && scrapAdded.length > 0) {
-							itemName = "Scrap Metal";
-							countToBeRemoved -= 1;
-						}
-						trade.removeItem(toggleMetal(itemName, "remove"));
+			if(theMode == "sell") {
+				if(tradeItems.length > 0) {
+					toggleMetal(item.name, "add");
+					console.log(addedScrap);
+					if(addedScrap < getSaleScrapRequired()) {
+						myLog.warning("Not enough yet: " + getSaleScrapRequired());
+					} else {
+						var newItem;
+						var newItems = [];
+						myLog.warning("BOOM - got enough");
+						newItem = toggleItem("add");
+						newItems.push(newItem);
+						addedItem.push(newItem);
+						trade.addItems(newItems);
 					}
 				}
+			} else if(theMode == "buy") {
+				theyAdded.push(item);
+				// don't add metal unless they added a trade item
+				if(isTradeItem(item)) {
+					var toBeAdded = [];
+					if(totalMetal >= getPurchaseScrapRequired()) {
+						while(addedScrap < getPurchaseScrapRequired()) {
+							myLog.warning("Not enough yet: " + getPurchaseScrapRequired());
+							if(getPurchaseScrapRequired() - addedScrap >= 9 && refined.length > 0) {
+								toBeAdded.push(toggleMetal("Refined Metal", "add"));
+							} else if(getPurchaseScrapRequired() - addedScrap >= 3 && reclaimed.length > 0) {
+								toBeAdded.push(toggleMetal("Reclaimed Metal", "add"));
+							} else if(scrap.length > 0) {
+								toBeAdded.push(toggleMetal("Scrap Metal", "add"));
+							}
+						}
+						trade.addItems(toBeAdded);
+					}
+				}
+			} else if(theMode == "donate") {
+				// do nothing
+			} else if(theMode == "give") {
+				// do nothing
 			}
-		} else if(theMode == "sell") {
-			var itemToRemove = toggleItem("remove");
-			if(itemToRemove != undefined) {
-				trade.removeItem(itemToRemove);
+		} else if (!added) {
+			if(theMode == "buy") {
+				theyAdded.splice(theyAdded.indexOf(), 1);
+				// don't remove metal unless they removed a trade item
+				if(isTradeItem()) {
+					if(addedScrap >= getPurchaseScrapRequired()) {
+						var countToBeRemoved = getPurchaseScrapRequired();
+						var toBeRemoved = [];
+						var itemName;
+						while(countToBeRemoved > 0) {
+							if(countToBeRemoved >= 9 && refinedAdded.length > 0) {
+								itemName = "Refined Metal";
+								countToBeRemoved -= 9;
+							} else if(countToBeRemoved >= 3 && reclaimedAdded.length > 0) {
+								itemName = "Reclaimed Metal";
+								countToBeRemoved -= 3;
+							} else if(countToBeRemoved > 0 && scrapAdded.length > 0) {
+								itemName = "Scrap Metal";
+								countToBeRemoved -= 1;
+							}
+							trade.removeItem(toggleMetal(itemName, "remove"));
+						}
+					}
+				}
+			} else if(theMode == "sell") {
+				var itemToRemove = toggleItem("remove");
+				if(itemToRemove != undefined) {
+					trade.removeItem(itemToRemove);
+				}
 			}
 		}
-	}
+	});
 });
 
 trade.on('ready', function() {
@@ -477,13 +486,13 @@ function toggleItem(action) {
 
 function getSaleScrapRequired() {
 	// multiply by nine and round up
-	return getScrapRequired(config.bot.sale_price);
+	return getScrapRequired(itemSalePrice);
 }
 
-function getPurchaseScrapRequired() {
+function getPurchaseScrapRequired(item) {
 	// multiply by nine and round up
 	var multiplier = theyAdded.length > 0 ? theyAdded.length : 1;
-	return getScrapRequired(config.bot.purchase_price) * multiplier;
+	return (getScrapRequired(itemSalePrice) * multiplier) - itemSaleMargin;
 }
 
 function getScrapRequired(val) {
