@@ -90,9 +90,11 @@ var theyAdded = [];
 
 // misc vars
 var value;
-var itemSalePrice = 1000;
+var scrapRequired = 0;
 // amount of margin in scrap
 var itemSaleMargin = 2;
+
+var tradeItemPrice = 1000;
 
 /**
 Logic
@@ -230,17 +232,15 @@ bot.on('sessionStart', function(steamid){
 	myLog.warning("Trade accepted with " + bot.users[steamid].playerName);
 
 	// reload the inventory
-	loadInventory(function(res1) {
-		trade.open(steamid, function(res2) {
-			if(config.bot.purchase_price > 0 && config.bot.sale_price > 0) {
-				buysell = "buying/selling";
-			} else if(config.bot.purchase_price > 0) {
-				buysell = "buying";
-			} else if(config.bot.sale_price > 0) {
-				buysell = "selling";
-			}
-			trade.chatMsg("I am but a humble bot, " + buysell + " " + config.bot.item + "(s)", function(res3) {
-				trade.chatMsg("Current stock: " + tradeItems.length)
+	prices.getItemPrice(config.bot.item_id, function(pricing) {
+		tradeItemPrice = pricing.price;
+		loadInventory(function(res1) {
+			trade.open(steamid, function(res2) {
+				trade.chatMsg("I am but a humble bot, buying/selling " + config.bot.item + "(s)", function(res3) {
+					trade.chatMsg("Current stock: " + tradeItems.length, function() {
+						trade.chatMsg("Current price: " + tradeItemPrice + " Refined");
+					});
+				});
 			});
 		});
 	});
@@ -248,9 +248,9 @@ bot.on('sessionStart', function(steamid){
 
 // trade logic
 trade.on('offerChanged', function(added, item) {
-	prices.getItemPrice(item.app_data.def_index, function() {
-		itemSalePrice = prices.price;
-		myLog.warning('They ' + (added ? 'added ' : 'removed ') + item.name);
+	prices.getItemPrice(item.app_data.def_index, function(pricing) {
+		item.price = pricing.price;
+		myLog.warning('They ' + (added ? 'added ' : 'removed ') + item.name + " worth " + item.price + " refined");
 		if (added) {
 			if(item.name.indexOf("Metal") >= 0) {
 				if(theMode == null) {
@@ -259,17 +259,24 @@ trade.on('offerChanged', function(added, item) {
 				}
 			} else if(theMode == null && isTradeItem(item)) {
 				setMode("buy");
-			} else if(item.name.indexOf("Metal") >= 0 && isTradeItem(item)) {
-				trade.chatMsg("I only accept metal or " + config.bot.item + "(s)");
+			} else if(!item.name.indexOf("Metal") >= 0 && !isTradeItem(item)) {
+				trade.chatMsg("I only accept metal or " + config.bot.item + "(s). Other items added will be considered a donation :)");
 				myLog.warning("Added unsupported item");
 			}
 
 			if(theMode == "sell") {
 				if(tradeItems.length > 0) {
 					toggleMetal(item.name, "add");
+
 					console.log(addedScrap);
-					if(addedScrap < getSaleScrapRequired()) {
-						myLog.warning("Not enough yet: " + getSaleScrapRequired());
+					var quo = addedScrap / refinedToScrap(tradeItemPrice);
+					console.log(quo);
+					quo = Math.floor(quo);
+					if(addedItem.length > 0) {
+						quo -= addedItem.length;
+					}
+					if(quo <= 0) {
+						myLog.warning("Not enough yet: " + scrapRequired);
 					} else {
 						var newItem;
 						var newItems = [];
@@ -284,13 +291,15 @@ trade.on('offerChanged', function(added, item) {
 				theyAdded.push(item);
 				// don't add metal unless they added a trade item
 				if(isTradeItem(item)) {
+					console.log("GOT HERE");
+					addItemPriceToScrapRequired(item);
 					var toBeAdded = [];
-					if(totalMetal >= getPurchaseScrapRequired()) {
-						while(addedScrap < getPurchaseScrapRequired()) {
-							myLog.warning("Not enough yet: " + getPurchaseScrapRequired());
-							if(getPurchaseScrapRequired() - addedScrap >= 9 && refined.length > 0) {
+					if(totalMetal >= scrapRequired) {
+						while(addedScrap < scrapRequired) {
+							myLog.warning("Not enough yet: " + scrapRequired);
+							if(scrapRequired - addedScrap >= 9 && refined.length > 0) {
 								toBeAdded.push(toggleMetal("Refined Metal", "add"));
-							} else if(getPurchaseScrapRequired() - addedScrap >= 3 && reclaimed.length > 0) {
+							} else if(scrapRequired - addedScrap >= 3 && reclaimed.length > 0) {
 								toBeAdded.push(toggleMetal("Reclaimed Metal", "add"));
 							} else if(scrap.length > 0) {
 								toBeAdded.push(toggleMetal("Scrap Metal", "add"));
@@ -308,9 +317,10 @@ trade.on('offerChanged', function(added, item) {
 			if(theMode == "buy") {
 				theyAdded.splice(theyAdded.indexOf(), 1);
 				// don't remove metal unless they removed a trade item
-				if(isTradeItem()) {
-					if(addedScrap >= getPurchaseScrapRequired()) {
-						var countToBeRemoved = getPurchaseScrapRequired();
+				if(isTradeItem(item)) {
+					if(addedScrap >= scrapRequired) {
+						var countToBeRemoved = scrapRequired;
+						remItemPriceFromScrapRequired(item);
 						var toBeRemoved = [];
 						var itemName;
 						while(countToBeRemoved > 0) {
@@ -395,7 +405,7 @@ function isAdmin(steamID){
 }
 
 function isTradeItem(item) {
-	if(item.name == config.bot.item) {
+	if((item.name == config.bot.item) || (item.app_data.def_index == config.bot.item_id)) {
 		return true;
 	} else {
 		return false;
@@ -486,23 +496,64 @@ function toggleItem(action) {
 
 function getSaleScrapRequired() {
 	// multiply by nine and round up
-	return getScrapRequired(itemSalePrice);
+	//addRefinedToScrapRequired
+	return scrapRequired;
 }
 
-function getPurchaseScrapRequired(item) {
-	// multiply by nine and round up
-	var multiplier = theyAdded.length > 0 ? theyAdded.length : 1;
-	return (getScrapRequired(itemSalePrice) * multiplier) - itemSaleMargin;
+function getPurchaseScrapRequired() {
+	return scrapRequired;
 }
 
-function getScrapRequired(val) {
+function refinedToScrap(val) {
 	return Math.ceil(val * 9);
+}
+
+function addItemPriceToScrapRequired(item) {
+	if(item.price > 0) {
+		var val = item.price;
+		addRefinedToScrapRequired(val);
+	}
+}
+
+function addRefinedToScrapRequired(val) {
+	addScrapToScrapRequired(refinedToScrap(val));
+}
+
+function addScrapToScrapRequired(val) {
+	if(theMode == "buy") {
+		val -= itemSaleMargin;
+	}
+	scrapRequired += val;
+}
+
+function remItemPriceFromScrapRequired(item) {
+	if(item.price > 0) {
+		var val = item.price;
+		remRefinedFromScrapRequired(val);
+	}
+}
+
+function remRefinedFromScrapRequired(val) {
+	remScrapFromScrapRequired(refinedToScrap(val));
+}
+
+function remScrapFromScrapRequired(val) {
+	if(theMode == "buy") {
+		val -= itemSaleMargin;
+	}
+
+	if(scrapRequired >= val) {
+		scrapRequired -= val;
+	} else {
+		scrapRequired = 0;
+	}
 }
 
 function toggleMetal(name, action) {
 	var thisItem; // the item to be added or removed
 	var tradeMetal; // array of the type of metal to be added or removed
 	var tradeMetalAdded; // array of the type of metal to be added to or removed from
+	var value = 0;
 	switch (name) {
 		case 'Scrap Metal':
 			tradeMetal = scrap;
