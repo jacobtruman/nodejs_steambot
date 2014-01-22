@@ -238,7 +238,7 @@ bot.on('sessionStart', function(steamid){
 			trade.open(steamid, function(res2) {
 				trade.chatMsg("I am but a humble bot, buying/selling " + config.bot.item + "(s)", function(res3) {
 					trade.chatMsg("Current stock: " + tradeItems.length, function() {
-						trade.chatMsg("Current price: " + tradeItemPrice + " Refined");
+						trade.chatMsg("Current price: " + tradeItemPrice + " " + pricing.currency);
 					});
 				});
 			});

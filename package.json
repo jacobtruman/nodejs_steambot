@@ -9,6 +9,7 @@
     "prompt": "~0.2.11",
     "steam": "~0.6.4",
     "steam-trade": "git://github.com/seishun/node-steam-trade.git",
+    "tfprices": "git@github.com:jacobtruman/nodejs_tfprices.git",
     "nodemailer": "~0.5.3",
     "mysql": "~2.0.0-alpha9",
     "request": "~2.27.0"
