@@ -7,7 +7,7 @@
     "tru-logger": "~0.0.1",
     "mkdirp": "~0.3.5",
     "prompt": "~0.2.11",
-    "steam": "~0.6.4",
+    "steam": "~0.6.6",
     "steam-trade": "git://github.com/seishun/node-steam-trade.git",
     "tfprices": "git@github.com:jacobtruman/nodejs_tfprices.git",
     "nodemailer": "~0.5.3",
