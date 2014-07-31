@@ -12,6 +12,11 @@ var nodemailer = require("nodemailer");
 var mysql = require('mysql');
 var tfprices = require('tfprices');
 
+var SteamTradeOffers = require('steam-tradeoffers');
+var offers = new SteamTradeOffers();
+
+var admin = '76561198011938265'; // put your steamid here so the bot can accept your offers
+
 /*var connection = mysql.createConnection({
   host     : 'localhost',
   user     : '',
@@ -218,7 +223,30 @@ bot.on('webSessionID', function(sessionID) {
 			trade.setCookie(cookie);
 		}
 		loadInventory(bot.setPersonaState(steam.EPersonaState.Online));
+		offers.setup(sessionID, cookies);
 	});
+});
+
+bot.on('tradeOffers', function(number) {
+  if (number > 0) {
+    offers.getOffers({
+      get_received_offers: 1,
+      active_only: 1,
+      time_historical_cutoff: Math.round(Date.now() / 1000)
+    }, function(error, body) {
+      if(body.response.trade_offers_received){
+        body.response.trade_offers_received.forEach(function(offer) {
+          if (offer.trade_offer_state == 2){
+            if(offer.steamid_other == admin) {
+              offers.acceptOffer(offer.tradeofferid);
+            } else {
+              offers.declineOffer(offer.tradeofferid);
+            }
+          }
+        });
+      }
+    });
+  }
 });
 
 // accept trade
