@@ -16,31 +16,9 @@ var tfprices = require('tfprices');
 var SteamTradeOffers = require('steam-tradeoffers');
 var offers = new SteamTradeOffers();
 
-var admins = [];/*
- '76561198022319482', // jacobtruman
- '76561198025555036', // katytruman
- '76561198025554462', // granttruman
- '76561198025556510', // draketruman
- '76561198025528351', // gabrielletruman
- '76561198046907210', // logantruman
- '76561198046870856', // jwilltruman
- '76561198046885589', // jacobwtruman
- '76561198054660055', // williamtruman
- '76561198011938265' // ivlostskitch
- ];*/
+var admins = [];
 
-var admin_logins = [
-	'jacobtruman',
-	'katytruman',
-	'granttruman',
-	'draketruman',
-	'gabbytruman',
-	'logantruman',
-	'jwillt',
-	'jwt',
-	'willtru',
-	'ivlostskitch'
-];
+var admin_logins = [];
 
 /*var connection = mysql.createConnection({
  host     : 'localhost',
@@ -85,11 +63,6 @@ var sentryFile = null;
 var bot = new steam.SteamClient();
 var trade = new SteamTrade();
 var steam_webapi;
-var item_schema = [];
-
-var tradeItemCount = 0;
-
-initTradeVars();
 
 /**
  Logic
@@ -109,6 +82,10 @@ if(fs.existsSync(configFile)) {
 // make sure there is a username defined
 if(config.username == undefined) {
 	throw new Error("Please specify username");
+}
+
+if(config.admin_logins) {
+	admin_logins = config.admin_logins;
 }
 
 var prices = new tfprices(config.backpacktf_key);
@@ -157,16 +134,9 @@ bot.on('loggedOn', function() {
 bot.on('webSessionID', function(sessionID) {
 	myLog.info('Got a new session ID: ' + sessionID);
 	bot.webLogOn(function(cookies) {
-		/*for(key in cookies){
-		 cookie = cookies[key];
-		 myLog.info('\tGot a new cookie: '+cookie);
-		 trade.setCookie(cookie);
-		 }
-		 loadInventory(bot.setPersonaState(steam.EPersonaState.Online));
-		 */
 		setupOffers(sessionID, cookies, function() {
 			processTradeOffers(null, function() {
-				initTradeVars();
+				// not sure this needs to be here...
 			});
 			bot.setPersonaState(steam.EPersonaState.Online);
 		});
@@ -175,7 +145,7 @@ bot.on('webSessionID', function(sessionID) {
 
 bot.on('tradeOffers', function(number) {
 	processTradeOffers(number, function() {
-		initTradeVars();
+		// not sure this needs to be here...
 	});
 });
 
@@ -193,13 +163,11 @@ function setupOffers(sessionID, cookies, callback) {
 	myLog.info("SETUP OFFERS");
 	offers.setup(sessionID, cookies, function() {
 		setupWebAPI(function() {
-			getSchema(function() {
-				getAdmins(function() {
-					myLog.success("Ready for trade offers");
-					if(typeof(callback) == "function") {
-						callback(true);
-					}
-				});
+			getAdmins(function() {
+				myLog.success("Ready for trade offers");
+				if(typeof(callback) == "function") {
+					callback(true);
+				}
 			});
 		});
 	});
@@ -257,8 +225,8 @@ function processOffer(offer) {
 		} else {
 			getTradeItemPrice(function(item_price) {
 				myLog.chat("Trade item price: "+item_price);
-				getTradeItems(offer.items_to_receive, "get", function(getDetails) {
-					getTradeItems(offer.items_to_give, "give", function(giveDetails) {
+				getTradeItems(offer.items_to_receive, function(getDetails) {
+					getTradeItems(offer.items_to_give, function(giveDetails) {
 						myLog.success("Done getting trade items");
 						if(giveDetails.donations > 0) {
 							myLog.error("Cancel trade - they are trying to get free stuff");
@@ -336,7 +304,7 @@ function purchaseScrapRequired(item_count, item_scrap, callback) {
 	});
 }
 
-function getTradeItems(items, type, callback) {
+function getTradeItems(items, callback) {
 	if(items) {
 		var offerCounts = {scrap:0, tradeItems:0, donations:0};
 		myLog.info("Found "+items.length+" items to give");
@@ -372,11 +340,6 @@ function getTradeItems(items, type, callback) {
 	}
 }
 
-function initTradeVars() {
-	tradeItemCount = 0;
-	myLog.info("Initializing trade vars");
-}
-
 function setupWebAPI(callback) {
 	myLog.info("Setting up WebAPI...");
 	SteamWebapi.gameid = SteamWebapi.TF2;
@@ -392,27 +355,6 @@ function setupWebAPI(callback) {
 			callback(true);
 		}
 	});
-}
-
-function getSchema(callback) {
-	if(item_schema.length <= 0) {
-		myLog.info("Getting schema...");
-		var item_count = 0;
-		steam_webapi.getSchema({}, function(err, schema) {
-			schema.items.forEach(function(item) {
-				item_schema[item.defindex] = item;
-				item_count++;
-
-				if(item_count == schema.items.length && typeof(callback) == "function") {
-					callback(true);
-				}
-			});
-		});
-	} else {
-		if(typeof(callback) == "function") {
-			callback(true);
-		}
-	}
 }
 
 function getAdmins(callback) {
