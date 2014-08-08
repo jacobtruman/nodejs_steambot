@@ -13,7 +13,8 @@
     "tfprices": "git@github.com:jacobtruman/nodejs_tfprices.git",
     "nodemailer": "~0.5.3",
     "mysql": "~2.0.0-alpha9",
-    "request": "~2.27.0"
+    "request": "~2.27.0",
+    "steam-webapi": "~0.6.3"
   },
   "devDependencies": {},
   "scripts": {
