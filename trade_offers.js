@@ -239,11 +239,11 @@ function processOffer(offer) {
 								myLog.warning("Buying");
 								purchaseScrapRequired(getDetails.tradeItems, item_price, function(scrap_required) {
 									myLog.info("Scrap required: "+scrap_required);
-									if(giveDetails.scrap >= scrap_required) {
+									if(giveDetails.scrap <= scrap_required) {
 										myLog.success("Got enough: "+giveDetails.scrap);
 										acceptTradeOffer(offer.tradeofferid);
 									} else {
-										myLog.error("Not enough scrap provided: "+giveDetails.scrap);
+										myLog.error("Too much scrap requested: "+giveDetails.scrap);
 										declineTradeOffer(offer.tradeofferid);
 									}
 								});
