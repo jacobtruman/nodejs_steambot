@@ -54,7 +54,7 @@ var logDir = __dirname + "/logs/";
 mkdirp(logDir, function(err) {
 	// path was created unless there was error
 });
-var myLog = new logger(logDir + config.username + ".txt");
+var myLog = new logger(logDir + config.username + ".txt", true);
 
 // authentication vars
 var sentryFile = null;
@@ -161,7 +161,8 @@ bot.on('tradeOffers', function(number) {
  */
 function setupOffers(sessionID, cookies, callback) {
 	myLog.info("SETUP OFFERS");
-	offers.setup(sessionID, cookies, function() {
+	var options = {sessionID: sessionID, webCookie:cookies};
+	offers.setup(options, function() {
 		setupWebAPI(function() {
 			getAdmins(function() {
 				myLog.success("Ready for trade offers");
@@ -201,13 +202,17 @@ function processTradeOffers(number, callback) {
 }
 
 function getTradeItemPrice(callback) {
-	prices.getItemPrice(config.bot.item_id, function(pricing) {
-		refinedToScrap(pricing.price, function(scrap) {
-			if(typeof(callback) == "function") {
-				callback(scrap);
-			}
+	if(config.bot.item_price) {
+		callback(config.bot.item_price);
+	} else {
+		prices.getItemPrice(config.bot.item_id, function(pricing) {
+			refinedToScrap(pricing.price, function(scrap) {
+				if(typeof(callback) == "function") {
+					callback(scrap);
+				}
+			});
 		});
-	});
+	}
 }
 
 function refinedToScrap(price, callback) {
@@ -272,7 +277,8 @@ function processOffer(offer) {
 
 function acceptTradeOffer(offer_id) {
 	myLog.success("Accepting offer ID: "+offer_id);
-	offers.acceptOffer(offer_id, function(trade_error) {
+	var options = {tradeOfferId:offer_id}
+	offers.acceptOffer(options, function(trade_error) {
 		if (trade_error != null) {
 			myLog.error(trade_error);
 		}
