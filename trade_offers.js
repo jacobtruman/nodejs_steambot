@@ -54,7 +54,6 @@ var logDir = __dirname + "/logs/";
 mkdirp(logDir, function(err) {
 	// path was created unless there was error
 });
-var myLog = new logger(logDir + config.username + ".txt", true);
 
 // authentication vars
 var sentryFile = null;
@@ -84,6 +83,9 @@ if(config.username == undefined) {
 	throw new Error("Please specify username");
 }
 
+// initialize log
+var myLog = new logger(logDir + config.username + ".txt", true);
+
 if(config.admin_logins) {
 	admin_logins = config.admin_logins;
 }
@@ -91,7 +93,7 @@ if(config.admin_logins) {
 var prices = new tfprices(config.backpacktf_key);
 
 // try to login with sentry file
-sentryFile = 'sentries/sentryfile.' + config.username;
+sentryFile = __dirname + '/sentries/sentryfile.' + config.username;
 if(fs.existsSync(sentryFile)) {
 	myLog.success('Sentry file for ' + config.username + ' found.');
 	bot.logOn({accountName: config.username, password: config.password, shaSentryfile: fs.readFileSync(sentryFile)});
@@ -133,8 +135,8 @@ bot.on('loggedOn', function() {
 // create web session for trading
 bot.on('webSessionID', function(sessionID) {
 	myLog.info('Got a new session ID: ' + sessionID);
-	bot.webLogOn(function(cookies) {
-		setupOffers(sessionID, cookies, function() {
+	bot.webLogOn(function(cookie) {
+		setupOffers(sessionID, cookie, function() {
 			processTradeOffers(null, function() {
 				// not sure this needs to be here...
 			});
@@ -156,12 +158,12 @@ bot.on('tradeOffers', function(number) {
 /**
  *
  * @param sessionID
- * @param cookies
+ * @param cookie
  * @param callback
  */
-function setupOffers(sessionID, cookies, callback) {
+function setupOffers(sessionID, cookie, callback) {
 	myLog.info("SETUP OFFERS");
-	var options = {sessionID: sessionID, webCookie:cookies};
+	var options = {sessionID: sessionID, webCookie:cookie};
 	offers.setup(options, function() {
 		setupWebAPI(function() {
 			getAdmins(function() {
@@ -287,7 +289,8 @@ function acceptTradeOffer(offer_id) {
 
 function declineTradeOffer(offer_id) {
 	myLog.error("Declining offer ID: "+offer_id);
-	offers.declineOffer(offer_id, function(trade_error) {
+	var options = {tradeOfferId:offer_id}
+	offers.declineOffer(options, function(trade_error) {
 		if (trade_error != null) {
 			myLog.error(trade_error);
 		}
