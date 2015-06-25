@@ -1,3 +1,7 @@
+process.on('message', function(m) {
+	console.log(m);
+});
+
 /**
  Variables
  */
@@ -116,9 +120,9 @@ bot.on('debug', function(data) {
 });
 
 // create sentry file
-bot.on('sentry',function(sentryHash) {
+bot.on('sentry', function(sentryHash) {
 	myLog.info("Creating sentry file");
-	fs.writeFile(sentryFile,sentryHash,function(err) {
+	fs.writeFile(sentryFile, sentryHash, function(err) {
 		if(err) {
 			myLog.error(err);
 		} else {
@@ -163,7 +167,7 @@ bot.on('tradeOffers', function(number) {
  */
 function setupOffers(sessionID, cookie, callback) {
 	myLog.info("SETUP OFFERS");
-	var options = {sessionID: sessionID, webCookie:cookie};
+	var options = {sessionID: sessionID, webCookie: cookie};
 	offers.setup(options, function() {
 		setupWebAPI(function() {
 			getAdmins(function() {
@@ -182,23 +186,24 @@ function setupOffers(sessionID, cookie, callback) {
  */
 function processTradeOffers(number, callback) {
 	myLog.info("Getting Trade offers");
-	if (number == null || number > 0) {
+	if(number == null || number > 0) {
 		offers.getOffers({
 			get_received_offers: 1,
 			active_only: 1,
 			time_historical_cutoff: Math.round(Date.now() / 1000)
 		}, function(error, body) {
-			if(body != undefined){
-				if(body.response.trade_offers_received){
+			if(body != undefined) {
+				if(body.response.trade_offers_received) {
 					myLog.info("Offers received");
 					body.response.trade_offers_received.forEach(function(offer) {
-						myLog.info("Offer ID: "+offer.tradeofferid);
+						myLog.info("Offer ID: " + offer.tradeofferid);
 						processOffer(offer);
 					});
 				}
-			} else if(error) {
-				myLog.error(error);
-			}
+			} else
+				if(error) {
+					myLog.error(error);
+				}
 		});
 	}
 }
@@ -225,13 +230,13 @@ function refinedToScrap(price, callback) {
 
 function processOffer(offer) {
 
-	if (offer.trade_offer_state == 2){
+	if(offer.trade_offer_state == 2) {
 		if(admins.indexOf(offer.steamid_other) >= 0) {
 			myLog.success("Admin - Offer accepted");
 			acceptTradeOffer(offer.tradeofferid);
 		} else {
 			getTradeItemPrice(function(item_price) {
-				myLog.chat("Trade item price: "+item_price);
+				myLog.chat("Trade item price: " + item_price);
 				getTradeItems(offer.items_to_receive, function(getDetails) {
 					getTradeItems(offer.items_to_give, function(giveDetails) {
 						myLog.success("Done getting trade items");
@@ -242,56 +247,58 @@ function processOffer(offer) {
 							if(getDetails.tradeItems && giveDetails.tradeItems) {
 								myLog.error("Cancel trade - both sides of trade contain Trade Item(s)");
 								declineTradeOffer(offer.tradeofferid);
-							} else if(getDetails.tradeItems) {
-								myLog.warning("Buying");
-								purchaseScrapRequired(getDetails.tradeItems, item_price, function(scrap_required) {
-									myLog.info("Scrap required: "+scrap_required);
-									if(giveDetails.scrap <= scrap_required) {
-										myLog.success("Got enough: "+giveDetails.scrap);
-										acceptTradeOffer(offer.tradeofferid);
-									} else {
-										myLog.error("Too much scrap requested: "+giveDetails.scrap);
-										declineTradeOffer(offer.tradeofferid);
+							} else
+								if(getDetails.tradeItems) {
+									myLog.warning("Buying");
+									purchaseScrapRequired(getDetails.tradeItems, item_price, function(scrap_required) {
+										myLog.info("Scrap required: " + scrap_required);
+										if(giveDetails.scrap <= scrap_required) {
+											myLog.success("Got enough: " + giveDetails.scrap);
+											acceptTradeOffer(offer.tradeofferid);
+										} else {
+											myLog.error("Too much scrap requested: " + giveDetails.scrap);
+											declineTradeOffer(offer.tradeofferid);
+										}
+									});
+								} else
+									if(giveDetails.tradeItems) {
+										myLog.warning("Selling");
+										sellScrapRequired(giveDetails.tradeItems, item_price, function(scrap_required) {
+											myLog.info("Scrap required: " + scrap_required);
+											if(getDetails.scrap >= scrap_required) {
+												myLog.success("Got enough: " + getDetails.scrap);
+												acceptTradeOffer(offer.tradeofferid);
+											} else {
+												myLog.error("Not enough scrap provided: " + getDetails.scrap);
+												declineTradeOffer(offer.tradeofferid);
+											}
+										});
 									}
-								});
-							} else if(giveDetails.tradeItems) {
-								myLog.warning("Selling");
-								sellScrapRequired(giveDetails.tradeItems, item_price, function(scrap_required) {
-									myLog.info("Scrap required: "+scrap_required);
-									if(getDetails.scrap >= scrap_required) {
-										myLog.success("Got enough: "+getDetails.scrap);
-										acceptTradeOffer(offer.tradeofferid);
-									} else {
-										myLog.error("Not enough scrap provided: "+getDetails.scrap);
-										declineTradeOffer(offer.tradeofferid);
-									}
-								});
-							}
 						}
 					});
 				});
 			});
 		}
 	} else {
-		myLog.error("Trade offer state is \""+offer.trade_offer_state+"\" and not \"2\"");
+		myLog.error("Trade offer state is \"" + offer.trade_offer_state + "\" and not \"2\"");
 	}
 }
 
 function acceptTradeOffer(offer_id) {
-	myLog.success("Accepting offer ID: "+offer_id);
-	var options = {tradeOfferId:offer_id}
+	myLog.success("Accepting offer ID: " + offer_id);
+	var options = {tradeOfferId: offer_id}
 	offers.acceptOffer(options, function(trade_error) {
-		if (trade_error != null) {
+		if(trade_error != null) {
 			myLog.error(trade_error);
 		}
 	});
 }
 
 function declineTradeOffer(offer_id) {
-	myLog.error("Declining offer ID: "+offer_id);
-	var options = {tradeOfferId:offer_id}
+	myLog.error("Declining offer ID: " + offer_id);
+	var options = {tradeOfferId: offer_id}
 	offers.declineOffer(options, function(trade_error) {
-		if (trade_error != null) {
+		if(trade_error != null) {
 			myLog.error(trade_error);
 		}
 	});
@@ -315,26 +322,29 @@ function purchaseScrapRequired(item_count, item_scrap, callback) {
 
 function getTradeItems(items, callback) {
 	if(items) {
-		var offerCounts = {scrap:0, tradeItems:0, donations:0};
-		myLog.info("Found "+items.length+" items to give");
+		var offerCounts = {scrap: 0, tradeItems: 0, donations: 0};
+		myLog.info("Found " + items.length + " items to give");
 		var item_count = 0;
 		items.forEach(function(item) {
-			steam_webapi.getAssetClassInfo({class_count:1, classid0:item.classid}, function(err, item_info) {
+			steam_webapi.getAssetClassInfo({class_count: 1, classid0: item.classid}, function(err, item_info) {
 				var _thisItem = item_info[item.classid];
 				item_count++;
-				myLog.warning("\t"+_thisItem.name);
+				myLog.warning("\t" + _thisItem.name);
 				if(_thisItem.app_data.def_index == config.bot.item_id) {
 					offerCounts.tradeItems += 1;
-				} else if(_thisItem.name == "Scrap Metal") {
-					offerCounts.scrap += 1;
-				} else if(_thisItem.name == "Reclaimed Metal") {
-					offerCounts.scrap += 3;
-				} else if(_thisItem.name == "Refined Metal") {
-					offerCounts.scrap += 9;
-				} else {
-					offerCounts.donations += 1;
-					myLog.warning("\t### DONATION ###");
-				}
+				} else
+					if(_thisItem.name == "Scrap Metal") {
+						offerCounts.scrap += 1;
+					} else
+						if(_thisItem.name == "Reclaimed Metal") {
+							offerCounts.scrap += 3;
+						} else
+							if(_thisItem.name == "Refined Metal") {
+								offerCounts.scrap += 9;
+							} else {
+								offerCounts.donations += 1;
+								myLog.warning("\t### DONATION ###");
+							}
 
 				if(item_count == items.length && typeof(callback) == "function") {
 					callback(offerCounts);
@@ -356,7 +366,7 @@ function setupWebAPI(callback) {
 	SteamWebapi.key = offers.APIKey;
 
 	SteamWebapi.ready(function(err) {
-		if (err) return myLog.error(err);
+		if(err) return myLog.error(err);
 		steam_webapi = new SteamWebapi();
 
 		myLog.success("WebAPI setup complete");
@@ -368,9 +378,9 @@ function setupWebAPI(callback) {
 
 function getAdmins(callback) {
 	admin_logins.forEach(function(login) {
-		steam_webapi.resolveVanityURL({vanityurl:login}, function(err, user_info) {
+		steam_webapi.resolveVanityURL({vanityurl: login}, function(err, user_info) {
 			admins.push(user_info.steamid);
-			myLog.info("Admin login/ID: "+login+" :: "+user_info.steamid);
+			myLog.info("Admin login/ID: " + login + " :: " + user_info.steamid);
 			if(admins.length == admin_logins.length && typeof(callback) == "function") {
 				callback(true);
 			}
