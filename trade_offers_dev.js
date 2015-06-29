@@ -175,10 +175,10 @@ bot.on('webSessionID', function(sessionID) {
 	myLog.info('Got a new session ID: ' + sessionID);
 	bot.webLogOn(function(cookie) {
 		setupOffers(sessionID, cookie, function() {
-			runCheck(function() {
+			//runCheck(function() {
 				startMonitor();
 				processTradeOffers(null);
-			});
+			//});
 		});
 	});
 });
@@ -394,9 +394,9 @@ function processOffer(offer, callback) {
 			if(typeof(callback) == "function") {
 				callback("invalid");
 			}
-		}
+		}myLog.error(err);
 	} catch(err) {
-		myLog.error(err);
+
 		processOffer(offer, callback);
 	}
 }
