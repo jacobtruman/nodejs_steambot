@@ -103,12 +103,7 @@ function forkChild(i) {
 
 	init(child_lock_file, function() {
 
-		if(false) {//account.manager) {
-			script = "trade_offers.js";
-		} else {
-			script = "trade_offers_dev.js";
-		}
-		var child = cp.fork(__dirname + '/' + script, [login]);
+		var child = cp.fork(__dirname + '/trade_offers.js', [login]);
 
 		child.on('message', function(m) {
 			handleMessage(m);
