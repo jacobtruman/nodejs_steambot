@@ -10,7 +10,7 @@ npm install
 
 #Usage
 ```
-node index.js username
+node trade_offers.js username
 ```
 
 The "configfile.json" needs to be in the "configs" directory. The name of the file needs to be the steam login. You can find a sample config file in the root of this project
