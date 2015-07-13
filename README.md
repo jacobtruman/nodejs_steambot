@@ -5,6 +5,7 @@ This is my attempt at implemeting a steam bot using the steam and steam-trade mo
 # Installation
 ```
 git clone git@github.com:jacobtruman/nodejs_steambot.git
+cd nodejs_steambot
 npm install
 ```
 
