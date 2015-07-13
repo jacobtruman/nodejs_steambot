@@ -98,7 +98,6 @@ function handleMessage(m) {
 
 function forkChild(i) {
 	var login = accounts[i];
-	var script;
 	var child_lock_file = lock_dir + "/" + login + ".lock";
 
 	init(child_lock_file, function() {
