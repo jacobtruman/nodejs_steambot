@@ -1,5 +1,4 @@
 {
-	"admins":["12345"],
 	"username":"USERNAME",
 	"password":"PASSWORD",
 	"bot":
@@ -7,14 +6,5 @@
 		"item":"ITEM TO BE BOUGHT/SOLD",
 		"purchase_price":0,
 		"sale_price":0
-	},
-	"notifications":
-	{
-		"smtp_email":"SMTP_EMAIL@DOMAIN.EXT",
-		"smtp_password":"SMTP_PASSWORD",
-		"notify_emails":
-		[
-			"NAME <EMAIL@DOMAIN.EXT>"
-		]
 	}
 }
