@@ -219,6 +219,7 @@ bot.on('webSessionID', function(sessionID) {
 					});
 				} else {
 					myLog.info("Item account - not starting monitor");
+					processTradeOffers();
 				}
 			});
 		});
@@ -728,8 +729,7 @@ function makeOffer(options, persist, callback) {
 			if(/\(16\)$/.test(err)) {
 				// the trade probably worked
 				myLog.success("This error is often returned in error; assuming successful");
-
-			} else
+			} else {
 				if(/\(26\)$/.test(err)) {
 					// need to receive an item through trade before making this trade
 					myLog.warning("The item(s) being traded are not visible to the trade offer system - need to receive a new item via trade to rectify this");
@@ -750,21 +750,21 @@ function makeOffer(options, persist, callback) {
 							});
 						});
 					});
-				} else
+				} else {
 					if(/\(25\)$/.test(err)) {
 						// too many pending offers to the same account - this should be addressed by not creating multiple trade requests with the same item
 						myLog.warning("There are 5 pending trade offers with the account: " + options.partnerSteamId);
-						process.send({ child: 0, command:"kill" });
-					} else
+					} else {
 						if(err == "SyntaxError: Unexpected token <") {
 							// something is wrong with the trade system or your steam session - may need to log in somewhere else
 							myLog.warning("something is wrong with the trade system");
 
-						} else
+						} else {
 							if(err == "Error: 403") {
 								// something is wrong with the trade system or your steam session - may need to log in somewhere else
 								myLog.warning("something is wrong with the trade system or your steam session - may need to log in somewhere else");
-
+								// kill the item account process; it should be automatically restarted by the monitor, fixing this issue
+								process.send({child: 0, command: "kill"});
 							} else {
 								/**
 								 * COMMON ERRORS
@@ -778,6 +778,10 @@ function makeOffer(options, persist, callback) {
 									makeOffer(options, true, callback)
 								}, 5000);
 							}
+						}
+					}
+				}
+			}
 		} else {
 			myLog.success("Offer creation successful: " + trade_res.tradeofferid);
 			sentOffers.push(trade_res.tradeofferid);
