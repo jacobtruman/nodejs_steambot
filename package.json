@@ -4,17 +4,17 @@
   "description": "NodeJS Steambot",
   "main": "index.js",
   "dependencies": {
-    "mkdirp": "~0.3.5",
-    "mysql": "~2.0.0-alpha9",
-    "nodemailer": "~0.5.3",
-    "prompt": "~0.2.11",
-    "request": "~2.27.0",
-    "steam": "~0.6.6",
+    "mkdirp": "^0.5.1",
+    "mysql": "^2.8.0",
+    "nodemailer": "^1.4.0",
+    "prompt": "*",
+    "request": "^2.58.0",
+    "steam": "*",
     "steam-trade": "git://github.com/seishun/node-steam-trade.git",
     "steam-tradeoffers": "git://github.com/Alex7Kom/node-steam-tradeoffers.git",
-    "steam-webapi": "~0.6.3",
-    "tfprices": "~0.0.1",
-    "tru-logger": "0.0.7"
+    "steam-webapi": "*",
+    "tfprices": "*",
+    "tru-logger": "*"
   },
   "devDependencies": {},
   "scripts": {
