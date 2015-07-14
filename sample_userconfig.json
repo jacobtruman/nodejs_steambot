@@ -1,0 +1,10 @@
+{
+	"username":"USERNAME",
+	"password":"PASSWORD",
+	"bot":
+	{
+		"item":"ITEM TO BE BOUGHT/SOLD",
+		"purchase_price":0,
+		"sale_price":0
+	}
+}
