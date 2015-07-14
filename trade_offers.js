@@ -122,8 +122,15 @@ if(account_config.username == undefined) {
 }
 
 // initialize log
-var myLog = new logger(logDir + account_config.username + ".txt", true, true);
+var logOptions = {
+	file: logDir + account_config.username + ".txt",
+	date: true,
+	print: true,
+	log_level: ["success", "error"],
+	prefix: account_config.username
+};
 
+var myLog = new logger(logOptions);
 
 if(config.admin_accounts) {
 	admin_accounts = config.admin_accounts;
