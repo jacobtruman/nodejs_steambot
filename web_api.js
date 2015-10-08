@@ -24,12 +24,28 @@ var steam_webapi;
 var api_key = 'D1BAB58EDEBE08D06ABAF7CE57F6268C';
 
 var item_schema = [];
+var item_qualities = [];
 
 setupWebAPI(function() {
-	getTradeItemByDefindex('1070', '76561198022319482', function(item) {
-		console.log(item);
-		throw Error("STOP HERE");
+	/*var defindex = '447';
+	var id = '3917821569';
+	var steamid = '76561198022319482';
+	getTradeItemByDefindex(defindex, steamid, function(items) {
+		console.log(items);
+
+		getTradeItemById(id, steamid, function(item) {
+			if(item !== false) {
+				console.log(item);
+			} else {
+				console.log("Item id " + id + " not found in inventory for steamid " + steamid);
+			}
+		});
+	});*/
+
+	getSchema(function() {
+		console.log(item_qualities[11]);
 	});
+
 	/*runTest(function() {
 		throw Error("STOP HERE");
 	});
@@ -92,11 +108,16 @@ function getSchema(callback) {
 	if(item_schema.length <= 0) {
 		console.log("Getting schema...");
 		var item_count = 0;
-		steam_webapi.getSchema({}, function(err, schema) {
+		steam_webapi.getSchema({language:'en'}, function(err, schema) {
 			if(err) {
 				throw Error(err);
 			}
 			console.log("Got schema!");
+			if(schema.qualities !== undefined) {
+				for(quality in schema.qualities){
+					item_qualities[schema.qualities[quality]] = schema.qualityNames[quality];
+				}
+			}
 			schema.items.forEach(function(item) {
 				item_schema[item.defindex] = item;
 				item_count++;
@@ -246,11 +267,40 @@ function getTradeItemByDefindex(defindex, steamid, callback) {
 		var items = [];
 		var count = 0;
 		user_items.items.forEach(function(item) {
+			count++;
 			if(item.defindex == defindex) {
-				if(typeof(callback) == "function") {
-					callback(item);
-				}
+				console.log("Adding item");
+				items.push(item);
+			}
+			if(count >= user_items.items.length && typeof(callback) == "function") {
+				callback(items);
 			}
 		});
+	});
+}
+
+function getTradeItemById(id, steamid, callback) {
+	console.log(id);
+	steam_webapi.getPlayerItems({steamid:steamid}, function(err, user_items) {
+		var count = 0;
+		user_items.items.some(function(item) {
+			count++;
+			if(item.id == id && typeof(callback) == "function") {
+				callback(item);
+				return true;
+			} else if(count >= user_items.items.length && typeof(callback) == "function") {
+				callback(false);
+				return false;
+			}
+		});
+		/*user_items.items.forEach(function(item) {
+			count++;
+			if(item.id == id && typeof(callback) == "function") {
+				found = true;
+				callback(item);
+			} else if(!found && count >= user_items.items.length && typeof(callback) == "function") {
+				callback(false);
+			}
+		});*/
 	});
 }

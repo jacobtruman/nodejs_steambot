@@ -79,19 +79,30 @@ function sendMessageToChild(child, index, array) {
 }
 
 function handleMessage(m) {
+	var source_account_name = accounts[m.index];
 	if(m.command !== undefined) {
 		switch(m.command) {
 			case "kill":
 				if(m.child !== undefined) {
-					console.log("Killing child '" + m.child + "'");
+					console.log("Trying to kill child '" + m.child + "'");
 					children[m.child].kill();
+				} else if(m.account !== undefined) {
+					console.log("Trying to kill account '" + m.account + "'");
+					var account_index = accounts.indexOf(m.account);
+					if(account_index >= 0) {
+						children[m.account_index].kill();
+					} else {
+						console.log("Account '" + m.account + "' not found in list of accounts");
+					}
+				} else {
+					console.log("Kill command sent without child or account parameter");
 				}
 				break;
 			default:
 				console.log("Command not defined '" + m.command + "'");
 		}
 	} else {
-		console.log("Got message from child: " + m.index);
+		console.log("Got message from child: " + m.index + "; account: " + source_account_name);
 		console.log(m);
 	}
 }

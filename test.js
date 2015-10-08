@@ -23,6 +23,7 @@ var item_account = null;
 var metal_account = null;
 var crate_account = null;
 var my_steamid = null;
+var key_obj = {defindex: 5021};
 
 if(fs.existsSync(configFile)) {
 	var data = fs.readFileSync(configFile, 'utf8');
@@ -53,12 +54,42 @@ if(account_config.username == undefined) {
 
 var prices = new tfprices(config.backpacktf_key);
 
-function getPrice() {
-	prices.getItemPrice('5021', function() {
-		console.log("PRICE: " + prices.price);
-		console.log("CURRENCY: " + prices.currency);
-		console.log("NAME: " + prices.name);
+function getPrice(item) {
+	console.log(item);
+	prices.getItemPrice(item.defindex, //item.quality,
+	function(pricing) {
+		console.log("PRICE: " + pricing.price);
+		console.log("CURRENCY: " + pricing.currency);
+		console.log("NAME: " + pricing.name);
+		priceToScrap(pricing, function(scrap) {
+			console.log(scrap);
+
+		});
 	});
+}
+
+function priceToScrap(price_obj, callback) {
+	var price = price_obj.price;
+	var currency = price_obj.currency;
+	var scrap;
+	if(currency == "refined") {
+		scrap = Math.ceil(price * 9);
+		if(typeof(callback) == "function") {
+			callback(scrap);
+		}
+	} else if(currency == "keys") {
+		prices.getItemPrice(key_obj.defindex, function(key_price_obj) {
+			console.log(price_obj);
+			console.log(key_price_obj.price+" KEY PRICE (REFINED)");
+			console.log(price+" EARBUD PRICE (KEYS)");
+			console.log("("+key_price_obj.price+" * "+price+") * 9");
+			scrap = Math.ceil((key_price_obj.price * price) * 9);
+			if(typeof(callback) == "function") {
+				//callback(scrap);
+				console.log(scrap+" SCRAP");
+			}
+		});
+	}
 }
 
 var admin_accounts = null;
@@ -75,13 +106,15 @@ if(config.admin_accounts) {
 	getMySteamId(function(steamId) {
 		console.log("Got steamid " + steamId);
 	});
+
+	var item = {defindex: 143, quality:0};
+	getPrice(item);
 }
 
 function getSteamIds(accounts, callback) {
 	for(login in accounts) {
 		var account = accounts[login];
 		admins.push(account.id);
-		console.log(config.crate_accounts.indexOf(login));
 		if(config.item_account == login) {
 			item_account = account.id;
 		} else if(config.metal_account == login) {
@@ -102,7 +135,7 @@ function getSteamIds(accounts, callback) {
 function getMySteamId(callback) {
 	if(my_steamid === null) {
 		if(account_config.steamid !== undefined) {
-			my_steamid = config.steamid;
+			my_steamid = account_config.steamid;
 			console.log("Setting my steam id from account_config: " + my_steamid);
 		} else {
 			if(admin_accounts[account_config.username] != undefined) {

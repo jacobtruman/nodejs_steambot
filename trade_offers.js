@@ -65,7 +65,8 @@ mkdirp(logDir, function(err) {
 var sentryFile = null;
 
 // steam bot vars
-var bot = new steam.SteamClient();
+var steamClient = new steam.SteamClient();
+var steamUser = new steam.SteamUser(steamClient);
 var trade = new SteamTrade();
 var item_schema = [];
 var steam_webapi;
@@ -144,7 +145,7 @@ function botLogon() {
 	sentryFile = __dirname + '/sentries/sentryfile.' + account_config.username;
 	if(fs.existsSync(sentryFile)) {
 		myLog.success('Sentry file for ' + account_config.username + ' found.');
-		bot.logOn({
+		steamUser.logOn({
 			accountName: account_config.username,
 			password: account_config.password,
 			shaSentryfile: fs.readFileSync(sentryFile)
@@ -155,28 +156,31 @@ function botLogon() {
 			steamGuardCode = args[1];
 		}
 		myLog.error('Sentry file for ' + account_config.username + ' does not exist.');
-		bot.logOn({accountName: account_config.username, password: account_config.password, authCode: steamGuardCode});
+		steamUser.logOn({accountName: account_config.username, password: account_config.password, authCode: steamGuardCode});
 	}
 }
 
-botLogon();
+steamClient.connect();
+steamClient.on('connected', function() {
+	botLogon();
+});
 
 /**
  Bot listeners and calls
  */
 
 // bot debug stuff
-bot.on('debug', function(data) {
+steamClient.on('debug', function(data) {
 	myLog.info("BOT DEBUG: " + data);
 });
 
-bot.on('loggedOff', function() {
+steamClient.on('loggedOff', function() {
 	// try to log back on
 	botLogon();
 });
 
 // create sentry file
-bot.on('sentry', function(sentryHash) {
+steamClient.on('sentry', function(sentryHash) {
 	myLog.info("Creating sentry file");
 	fs.writeFile(sentryFile, sentryHash, function(err) {
 		if(err) {
@@ -188,14 +192,14 @@ bot.on('sentry', function(sentryHash) {
 });
 
 // logged in, set state to "online"
-bot.on('loggedOn', function() {
+steamClient.on('loggedOn', function() {
 	myLog.success(account_config.username + " logged on!");
 });
 
 // create web session for trading
-bot.on('webSessionID', function(sessionID) {
+steamClient.on('webSessionID', function(sessionID) {
 	myLog.info('Got a new session ID: ' + sessionID);
-	bot.webLogOn(function(cookie) {
+	steamClient.webLogOn(function(cookie) {
 		setupOffers(sessionID, cookie, function() {
 			getMySteamId(function(steamId) {
 				myLog.info("Got my steam id: " + steamId);
@@ -205,7 +209,7 @@ bot.on('webSessionID', function(sessionID) {
 							getUserPersonaState(my_steamid, function(state) {
 								if(state === steam.EPersonaState.Offline) {
 									myLog.info("Setting persona state to \"Online\"");
-									bot.setPersonaState(steam.EPersonaState.Online);
+									steamClient.setPersonaState(steam.EPersonaState.Online);
 								}
 							});
 							// set the interval higher
@@ -215,13 +219,14 @@ bot.on('webSessionID', function(sessionID) {
 								startMonitor();
 							}
 						} else {
-							if(monitor_interval !== 5) {
-								monitor_interval = 5;
-								myLog.info("Changing check interval to " + monitor_interval);
-								startMonitor();
-							} else {
-								runCheck();
-							}
+							runCheck(function() {
+								if(monitor_interval !== 5) {
+									monitor_interval = 5;
+									myLog.info("Changing check interval to " + monitor_interval);
+									startMonitor();
+								}
+							});
+							processTradeOffers(null);
 						}
 					});
 				} else {
@@ -233,7 +238,7 @@ bot.on('webSessionID', function(sessionID) {
 	});
 });
 
-bot.on('tradeOffers', function(number) {
+steamClient.on('tradeOffers', function(number) {
 	processTradeOffers(number);
 });
 
@@ -320,7 +325,7 @@ function getSchema(callback) {
 	if(item_schema.length <= 0) {
 		myLog.info("Getting schema...");
 		var item_count = 0;
-		steam_webapi.getSchema({}, function(err, schema) {
+		steam_webapi.getSchema({language:'en'}, function(err, schema) {
 			if(err) {
 				// wait 5 seconds between tries
 				setTimeout(function() {
@@ -345,7 +350,7 @@ function getSchema(callback) {
 }
 
 function getTradeItemPrice(callback) {
-	prices.getItemPrice(account_config.bot.item_id, function(pricing) {
+	prices.getItemPriceHigh(account_config.bot_item, function(pricing) {
 		refinedToScrap(pricing.price, function(scrap) {
 			if(typeof(callback) == "function") {
 				callback(scrap);
@@ -363,6 +368,7 @@ function refinedToScrap(price, callback) {
 function processOffer(offer, callback) {
 	try {
 		if(offer.trade_offer_state == 2) {
+			myLog.info("Offer state is good (2)");
 			if(admins.indexOf(offer.steamid_other) >= 0) {
 				myLog.success("Admin - Offer accepted");
 				acceptTradeOffer(offer.tradeofferid);
@@ -370,6 +376,7 @@ function processOffer(offer, callback) {
 					callback("accpeted");
 				}
 			} else {
+				myLog.info("Not an admin offer");
 				getTradeItemPrice(function(item_price) {
 					myLog.chat("Trade item price: " + item_price);
 					getTradeItems(offer.items_to_receive, "get", function(getDetails) {
@@ -388,7 +395,7 @@ function processOffer(offer, callback) {
 									if(typeof(callback) == "function") {
 										callback("declined");
 									}
-								} else
+								} else {
 									if(getDetails.tradeItems) {
 										myLog.warning("Buying");
 										purchaseScrapRequired(getDetails.tradeItems, item_price, function(scrap_required) {
@@ -407,7 +414,7 @@ function processOffer(offer, callback) {
 												}
 											}
 										});
-									} else
+									} else {
 										if(giveDetails.tradeItems) {
 											myLog.warning("Selling");
 											sellScrapRequired(giveDetails.tradeItems, item_price, function(scrap_required) {
@@ -434,6 +441,8 @@ function processOffer(offer, callback) {
 												callback("declined");
 											}
 										}
+									}
+								}
 							}
 						});
 					});
@@ -505,7 +514,7 @@ function sellScrapRequired(item_count, item_scrap, callback) {
 
 function purchaseScrapRequired(item_count, item_scrap, callback) {
 	sellScrapRequired(item_count, item_scrap, function(scrap_required) {
-		scrap_required -= 2;
+		scrap_required -= 18;
 		if(typeof(callback) == "function") {
 			callback(scrap_required);
 		}
@@ -522,21 +531,18 @@ function getTradeItems(items, action, callback) {
 				var _thisItem = item_info[item.classid];
 				item_count++;
 				myLog.warning("\t" + _thisItem.name);
-				if(_thisItem.app_data.def_index == account_config.bot.item_id) {
+				if(isTradeItem(_thisItem)) {
 					offerCounts.tradeItems += 1;
-				} else
-					if(_thisItem.name == "Scrap Metal") {
-						offerCounts.scrap += 1;
-					} else
-						if(_thisItem.name == "Reclaimed Metal") {
-							offerCounts.scrap += 3;
-						} else
-							if(_thisItem.name == "Refined Metal") {
-								offerCounts.scrap += 9;
-							} else {
-								offerCounts.donations += 1;
-								myLog.warning("\t### DONATION ###");
-							}
+				} else if(_thisItem.name == "Scrap Metal") {
+					offerCounts.scrap += 1;
+				} else if(_thisItem.name == "Reclaimed Metal") {
+					offerCounts.scrap += 3;
+				} else if(_thisItem.name == "Refined Metal") {
+					offerCounts.scrap += 9;
+				} else {
+					offerCounts.donations += 1;
+					myLog.warning("\t### DONATION ###");
+				}
 
 				if(item_count == items.length && typeof(callback) == "function") {
 					callback(offerCounts);
@@ -550,6 +556,27 @@ function getTradeItems(items, action, callback) {
 		}
 	}
 }
+
+function isTradeItem(item) {
+	if(account_config.bot_item.defindex !== undefined) {
+		if(item.app_data.def_index == account_config.bot_item.defindex) {
+			if(account_config.bot_item.id === undefined) {
+				return true;
+			} else {
+				if(account_config.bot_item.id == item.app_data.id) {
+					return true;
+				} else {
+					return false;
+				}
+			}
+		} else {
+			return false;
+		}
+	} else {
+		return false;
+	}
+}
+
 
 function getItemInfo(item, callback) {
 	steam_webapi.getAssetClassInfo({class_count: 1, classid0: item.classid}, function(err, item_info) {
@@ -635,7 +662,7 @@ function startMonitor() {
 				getUserPersonaState(my_steamid, function(state) {
 					if(state === steam.EPersonaState.Offline) {
 						myLog.info("Setting persona state to \"Online\"");
-						bot.setPersonaState(steam.EPersonaState.Online);
+						steamClient.setPersonaState(steam.EPersonaState.Online);
 					}
 				});
 				// set the interval higher
@@ -644,8 +671,6 @@ function startMonitor() {
 					myLog.info("Changing check interval to " + monitor_interval);
 					clearInterval(monitor);
 					startMonitor();
-				} else {
-
 				}
 			} else {
 				//myLog.info("Persona state is already \"In Game\"");
@@ -876,7 +901,7 @@ function getNewUserItems(user_id, callback) {
 				getItemInventoryInfo(item.inventory, function(inventory_info) {
 					if(!inventory_info.in_backpack) {
 						createTradeItem(item, function(trade_item) {
-							if(account_config.bot.item_id && item.defindex == account_config.bot.item_id) {
+							if(account_config.bot_item.defindex !== undefined && item.defindex == account_config.bot_item.defindex) {
 								// do not trade away a trade item
 							} else {
 								switch(item_schema[item.defindex].item_class) {
