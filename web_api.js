@@ -1,4 +1,5 @@
 var SteamWebapi = require('steam-webapi');
+var getSteamAPIKey = require('steam-web-api-key');
 
 var admin_logins_ALL = [
 	'jacobtruman',
@@ -91,16 +92,25 @@ function setupWebAPI(callback) {
 	console.log("Setting up WebAPI...");
 	SteamWebapi.gameid = SteamWebapi.TF2;
 	SteamWebapi.appid = SteamWebapi.TF2
-	SteamWebapi.key = api_key;
-
-	SteamWebapi.ready(function(err) {
-		if (err) return console.log(err);
-		steam_webapi = new SteamWebapi();
-
-		console.log("WebAPI setup complete");
-		if(typeof(callback) == "function") {
-			callback(true);
+	getSteamAPIKey(options, function (err, APIKey) {
+		if (err) {
+			console.log(err);
+			SteamWebapi.key = api_key;
+		} else {
+			SteamWebapi.key = APIKey;
 		}
+
+		SteamWebapi.ready(function (err) {
+			if (err) {
+				throw err;
+			}
+			steam_webapi = new SteamWebapi();
+
+			console.log("WebAPI setup complete");
+			if (typeof(callback) == "function") {
+				callback(true);
+			}
+		});
 	});
 }
 
