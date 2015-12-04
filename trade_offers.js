@@ -11,7 +11,6 @@ var io = require('socket.io-client');
 var fs = require('fs');
 var logger = require('tru-logger');
 var steam = require('steam');
-var SteamTrade = require('steam-trade');
 var SteamWebapi = require('steam-webapi');
 var SteamWebLogOn = require('steam-weblogon');
 var getSteamAPIKey = require('steam-web-api-key');
@@ -81,7 +80,6 @@ var steamClient = new steam.SteamClient();
 var steamUser = new steam.SteamUser(steamClient);
 var steamFriends = new steam.SteamFriends(steamClient);
 var steamWebLogOn = new SteamWebLogOn(steamClient, steamUser);
-var trade = new SteamTrade();
 var item_schema = [];
 var steam_webapi;
 
