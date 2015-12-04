@@ -20,6 +20,9 @@ var nodemailer = require("nodemailer");
 var mysql = require('mysql');
 var tfprices = require('tfprices');
 var SteamTradeOffers = require('steam-tradeoffers');
+var SteamTotp = require('steam-totp');
+
+var steamGuardCode = null;
 
 var ioClient = io.connect('http://localhost:8000');
 
@@ -164,17 +167,31 @@ function botLogon() {
 			password: account_config.password,
 			sha_sentryfile: fs.readFileSync(sentryFile)
 		});
-	} else { // else ask for or generate a steamGuard auth code
-		var steamGuardCode = null;
-		if (args[1] != undefined) {
-			steamGuardCode = args[1];
+	} else { // else ask for or generate a steamGuard auth code*/
+		myLog.warning('Sentry file for ' + account_config.username + ' does not exist.');
+		if(account_config.shared_secret != undefined) {
+			steamUser.logOn({
+				account_name: account_config.username,
+				password: account_config.password,
+				two_factor_code: SteamTotp.generateAuthCode(account_config.shared_secret)
+			});
+		} else {
+			var schema = {
+				properties: {
+					code: {
+						message: 'Steam Guard Code: ',
+						required: true
+					}
+				}
+			};
+			prompt.get(schema, function (err, result) {
+				steamUser.logOn({
+					account_name: account_config.username,
+					password: account_config.password,
+					two_factor_code: result.code
+				});
+			});
 		}
-		myLog.error('Sentry file for ' + account_config.username + ' does not exist.');
-		steamUser.logOn({
-			account_name: account_config.username,
-			password: account_config.password,
-			authCode: steamGuardCode
-		});
 	}
 }
 
@@ -191,6 +208,10 @@ steamClient.on('connected', function () {
 // bot debug stuff
 steamClient.on('debug', function (data) {
 	myLog.info("BOT DEBUG: " + data);
+});
+
+steamClient.on('error', function(e) {
+	myLog.error('Steam Error: ' + e);
 });
 
 steamClient.on('loggedOff', function () {
@@ -243,8 +264,8 @@ steamClient.on('logOnResponse', function (logonResp) {
 										startMonitor();
 									}
 								});
-								processTradeOffers(null);
 							}
+							processTradeOffers(null);
 						});
 					} else {
 						myLog.info("Item account - not starting monitor");

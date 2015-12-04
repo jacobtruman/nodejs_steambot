@@ -20,6 +20,7 @@ var mysql = require('mysql');
 var tfprices = require('tfprices');
 var TeamFortress2 = require('tf2');
 var prompt = require('prompt');
+var SteamTotp = require('steam-totp');
 
 prompt.start();
 
@@ -165,17 +166,31 @@ function botLogon() {
 			password: account_config.password,
 			sha_sentryfile: fs.readFileSync(sentryFile)
 		});
-	} else { // else ask for or generate a steamGuard auth code
-		var steamGuardCode = null;
-		if (args[1] != undefined) {
-			steamGuardCode = args[1];
+	} else { // else ask for or generate a steamGuard auth code*/
+		myLog.warning('Sentry file for ' + account_config.username + ' does not exist.');
+		if(account_config.shared_secret != undefined) {
+			steamUser.logOn({
+				account_name: account_config.username,
+				password: account_config.password,
+				two_factor_code: SteamTotp.generateAuthCode(account_config.shared_secret)
+			});
+		} else {
+			var schema = {
+				properties: {
+					code: {
+						message: 'Steam Guard Code: ',
+						required: true
+					}
+				}
+			};
+			prompt.get(schema, function (err, result) {
+				steamUser.logOn({
+					account_name: account_config.username,
+					password: account_config.password,
+					two_factor_code: result.code
+				});
+			});
 		}
-		myLog.error('Sentry file for ' + account_config.username + ' does not exist.');
-		steamUser.logOn({
-			account_name: account_config.username,
-			password: account_config.password,
-			authCode: steamGuardCode
-		});
 	}
 }
 
