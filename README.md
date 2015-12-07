@@ -1,7 +1,7 @@
 # Steambot for Node.js
 [![npm version](https://img.shields.io/npm/v/nodejs_steambot.svg)](https://npmjs.com/package/nodejs_steambot)
 [![npm downloads](https://img.shields.io/npm/dm/nodejs_steambot.svg)](https://npmjs.com/package/nodejs_steambot)
-===============
+
 This is my attempt at implemeting a steam bot using the steam and steam-trade modules
 
 # Installation
