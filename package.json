@@ -1,6 +1,6 @@
 {
   "name": "nodejs_steambot",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "NodeJS Steambot",
   "main": "index.js",
   "dependencies": {
