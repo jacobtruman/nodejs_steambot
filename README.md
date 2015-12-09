@@ -3,16 +3,8 @@
 [![npm downloads](https://img.shields.io/npm/dm/nodejs_steambot.svg)](https://npmjs.com/package/nodejs_steambot)
 [![dependencies](https://img.shields.io/david/jacobtruman/nodejs_steambot.svg)](https://david-dm.org/jacobtruman/nodejs_steambot)
 
-This is my attempt at implemeting a steam bot using the steam and steam-trade modules
+Install it from [npm](https://www.npmjs.com/package/nodejs_steambot) or check out the [wiki](https://github.com/jacobtruman/nodejs_steambot/wiki) for documentation.
 
-# Installation
-```
-npm install nodejs_steambot
-```
+# Support
 
-#Usage
-```
-node trade_offers.js username
-```
-
-The "configfile.json" needs to be in the "configs" directory. The name of the file needs to be the steam login. You can find a sample config file in the root of this project
+Report bugs on the [issue tracker](https://github.com/jacobtruman/nodejs_steambot/issues).
