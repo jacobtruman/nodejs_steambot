@@ -10,7 +10,6 @@ process.on('message', function (m) {
 var fs = require('fs');
 var logger = require('tru-logger');
 var steam = require('steam');
-var SteamTrade = require('steam-trade');
 var SteamWebapi = require('steam-webapi');
 var SteamWebLogOn = require('steam-weblogon');
 var getSteamAPIKey = require('steam-web-api-key');
@@ -77,10 +76,8 @@ var sentryFile = null;
 // steam bot vars
 var steamClient = new steam.SteamClient();
 var steamUser = new steam.SteamUser(steamClient);
-var steamFriends = new steam.SteamFriends(steamClient);
 var tf2 = new TeamFortress2(steamUser);
 var steamWebLogOn = new SteamWebLogOn(steamClient, steamUser);
-var trade = new SteamTrade();
 var item_schema = [];
 var steam_webapi;
 
@@ -88,21 +85,6 @@ var item_account = null;
 var metal_account = null;
 var crate_account = null;
 var my_steamid = null;
-
-var keyDefindex = 5021;
-
-/**
- * Tracks the offers sent to prevent duplication of offers
- * @type {Array}
- */
-var sentOffers = [];
-
-/**
- * Monitor check interval in minutes
- *
- * @type {number}
- */
-var monitor_interval = 1;
 
 /**
  Logic
@@ -153,8 +135,6 @@ if (config.admin_accounts) {
 	admin_accounts = config.admin_accounts;
 }
 
-var prices = new tfprices(config.backpacktf_key);
-
 function botLogon() {
 	myLog.success('Attempting to logon bot for ' + account_config.username);
 	// try to login with sentry file
@@ -168,11 +148,11 @@ function botLogon() {
 		});
 	} else { // else ask for or generate a steamGuard auth code*/
 		myLog.warning('Sentry file for ' + account_config.username + ' does not exist.');
-		if(account_config.shared_secret != undefined) {
+		if(account_config.steam_guard.shared_secret != undefined) {
 			steamUser.logOn({
 				account_name: account_config.username,
 				password: account_config.password,
-				two_factor_code: SteamTotp.generateAuthCode(account_config.shared_secret)
+				two_factor_code: SteamTotp.generateAuthCode(account_config.steam_guard.shared_secret)
 			});
 		} else {
 			var schema = {

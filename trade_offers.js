@@ -21,8 +21,6 @@ var tfprices = require('tfprices');
 var SteamTradeOffers = require('steam-tradeoffers');
 var SteamTotp = require('steam-totp');
 
-var steamGuardCode = null;
-
 var ioClient = io.connect('http://localhost:8000');
 
 /*ioClient.on('foo', function(msg) {

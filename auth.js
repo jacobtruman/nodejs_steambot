@@ -18,8 +18,8 @@ if (fs.existsSync(accountConfigFile)) {
 	throw Error("MISTAKE: configFile does not exist: " + accountConfigFile);
 }
 
-if(account_config.shared_secret != undefined) {
-	var code = SteamTotp.generateAuthCode(account_config.shared_secret);
+if(account_config.steam_guard != undefined && account_config.steam_guard.shared_secret != undefined && account_config.steam_guard.shared_secret != '') {
+	var code = SteamTotp.generateAuthCode(account_config.steam_guard.shared_secret);
 	console.log(code);
 } else {
 	var SteamUser = require('steam-user');
@@ -41,7 +41,7 @@ if(account_config.shared_secret != undefined) {
 		});*/
 
 		client.enableTwoFactor(function(response) {
-			console.log(response);
+			console.log(JSON.stringify(response));
 			if(response.status == 1) {
 				if(rl == undefined) {
 					var rl = readline.createInterface({
