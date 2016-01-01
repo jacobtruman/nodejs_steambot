@@ -13,10 +13,13 @@
     "socket.io-client": "*",
     "steam": "^1.3.0",
     "steam-totp": "*",
+    "steam-tradeoffer-manager": "^1.16.0",
     "steam-tradeoffers": "*",
     "steam-web-api-key": "*",
     "steam-webapi": "*",
     "steam-weblogon": "*",
+    "steamcommunity": "^3.14.1593",
+    "steamid": "*",
     "tf2": "*",
     "tfprices": "*",
     "tru-logger": "*"

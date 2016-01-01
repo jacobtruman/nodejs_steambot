@@ -1,3 +1,5 @@
+#! /usr/bin/env node
+
 process.on('message', function (m) {
 	console.log(m);
 });

@@ -1,3 +1,5 @@
+#! /usr/bin/env node
+
 // requires
 var fs = require('fs');
 var SteamID = require('steamid');
@@ -127,7 +129,7 @@ client.on('loggedOn', function(details) {
 
 client.on('error', function(e) {
 	// Some error occurred during logon
-	console.log(e);
+	console.log("Undefined error: "+e);
 });
 
 client.on('webSession', function(sessionID, cookies) {
@@ -135,7 +137,6 @@ client.on('webSession', function(sessionID, cookies) {
 		if(err) {
 			console.log(err);
 			process.exit(1); // Fatal error since we couldn't get API key
-			return;
 		}
 
 		console.log("Got API key: " + manager.apiKey);
@@ -246,6 +247,7 @@ var login_details = {
 community.loggedIn(function(err, loggedIn) {
 	if(err != null) {
 		console.log(err);
+		process.exit(1);
 	}
 	if(loggedIn) {
 		console.log("Logged into community");
@@ -253,7 +255,8 @@ community.loggedIn(function(err, loggedIn) {
 		community.login(login_details, function (err) {
 			console.log("Logging into community");
 			if (err != null) {
-				console.log(err);
+				console.log("Failed to login to community: "+err);
+				process.exit(1);
 			}
 
 			console.log("Starting comfirmation polling");
