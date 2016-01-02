@@ -285,10 +285,14 @@ function processConfirmation(confirmation, callback) {
 	var time = Math.floor(Date.now() / 1000);
 	var key = SteamTotp.getConfirmationKey(account_config.steam_guard.identity_secret, time, "conf");
 	community.respondToConfirmation(confirmation.id, confirmation.key, time, key, true, function (err) {
+		console.log("Responding to confirmation "+confirmation.id);
 		var ret = true;
 		if (err != null) {
 			console.log(err);
 			ret = false;
+			console.log("Responding to confirmation "+confirmation.id+" failed");
+		} else {
+			console.log("Responding to confirmation "+confirmation.id+" succeeded");
 		}
 
 		if (typeof(callback) == "function") {
