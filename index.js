@@ -24,6 +24,9 @@ var admin_ids = [];
 
 var my_steamid;
 
+var config = [];
+var account_config = [];
+
 // main config
 if (fs.existsSync(configFile)) {
 	var data = fs.readFileSync(configFile, 'utf8');
@@ -89,22 +92,7 @@ if(fs.existsSync('polldata.json')) {
 	manager.pollData = JSON.parse(fs.readFileSync('polldata.json'));
 }
 
-var logOnOptions = {
-	"accountName": account_config.username
-};
-
-if(account_config.login_key != undefined) {
-	logOnOptions.loginKey = account_config.login_key;
-} else {
-	if(account_config.password != undefined) {
-		logOnOptions.password = account_config.password;
-		logOnOptions.rememberPassword = true;
-	}
-}
-
-if(account_config.steam_guard.shared_secret != undefined) {
-	logOnOptions.twoFactorCode = SteamTotp.generateAuthCode(account_config.steam_guard.shared_secret);
-}
+var logOnOptions = getLogonOptions();
 
 /**
  * steam-user client methods BEGIN
@@ -323,6 +311,12 @@ function processOffer(offer, callback) {
 			var ret = true;
 			if (err) {
 				console.log("Unable to accept offer: " + err.message);
+				if(err.message == "HTTP error 403") {
+					// logoff and log back on
+					client.logOff();
+					var logOnOptions = getLogonOptions();
+					client.logOn(logOnOptions);
+				}
 				//client.webLogOn();
 				//processOffer(offer, callback);
 				ret = false;
@@ -340,6 +334,28 @@ function processOffer(offer, callback) {
 			callback(false);
 		}
 	}
+}
+
+function getLogonOptions() {
+	var options = {
+		"accountName": account_config.username
+	};
+
+	if(account_config.login_key != undefined) {
+		options.loginKey = account_config.login_key;
+	} else {
+		if(account_config.password != undefined) {
+			options.password = account_config.password;
+			options.rememberPassword = true;
+		}
+	}
+
+	if(account_config.steam_guard.shared_secret != undefined) {
+		options.twoFactorCode = SteamTotp.generateAuthCode(account_config.steam_guard.shared_secret);
+	}
+	//console.log(options);
+
+	return options;
 }
 
 
