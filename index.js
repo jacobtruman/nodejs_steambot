@@ -11,12 +11,15 @@ var TradeOfferManager = require('steam-tradeoffer-manager');
 // cli paramters
 var args = process.argv.splice(2);
 
+var username = args[0];
+
 var client = new SteamUser();
 var community = new SteamCommunity();
 
 // config files
-var configFile = __dirname + "/configs/config.json";
-var accountConfigFile = __dirname + "/configs/" + args[0] + ".json";
+var configsDir = __dirname + "/configs";
+var configFile = configsDir + "/config.json";
+var accountConfigFile = configsDir + "/" + username + ".json";
 
 var dataDirectory = __dirname + "/data";
 var admin_usernames = [];
@@ -195,6 +198,12 @@ client.on('loginKey', function(loginKey) {
 	console.log("New Login Key: "+loginKey);
 	account_config.login_key = loginKey;
 	// write new login key to config file
+	fs.writeFile(accountConfigFile, JSON.stringify(account_config, null, "\t"), function(err) {
+		if(err) {
+			console.log(err);
+		}
+		console.log("The config file \"" + accountConfigFile + "\" was saved");
+	});
 });
 
 client.on("sentry", function(sentry) {
@@ -283,7 +292,7 @@ function community_login(callback) {
 			}
 		});
 	} else {
-		console.log("SteamGuard code has not changed yet: " + lastTwoFactorCode + " != " + login_details.twoFactorCode);
+		console.log("SteamGuard code has not changed yet: " + lastTwoFactorCode + " == " + login_details.twoFactorCode);
 
 		console.log("Sleeping " + loginSleepTime + " seconds and trying again...");
 		// wait for loginSleepTime seconds and try again
