@@ -1,4 +1,6 @@
-var SteamWebapi = require('steam-webapi');
+#! /usr/bin/env node
+//var SteamWebapi = require('steam-webapi');
+var SteamWebAPI = require('@doctormckay/steam-webapi');
 var getSteamAPIKey = require('steam-web-api-key');
 
 var admin_logins_ALL = [
@@ -90,6 +92,16 @@ function runCheck() {
 
 function setupWebAPI(callback) {
 	console.log("Setting up WebAPI...");
+	var steam_webapi = new SteamWebAPI(api_key);
+	var input = {};
+	steam_webapi.get("IEconItems_440", "GetSchema", 1, function(err, schema) {
+		if (err) {
+			console.log(err);
+		} else {
+			console.log(schema);
+		}
+	});
+	/*
 	SteamWebapi.gameid = SteamWebapi.TF2;
 	SteamWebapi.appid = SteamWebapi.TF2
 	getSteamAPIKey(options, function (err, APIKey) {
@@ -112,6 +124,7 @@ function setupWebAPI(callback) {
 			}
 		});
 	});
+	*/
 }
 
 function getSchema(callback) {

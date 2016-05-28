@@ -16,7 +16,7 @@
     "steam-tradeoffer-manager": "^1.16.0",
     "steam-tradeoffers": "*",
     "steam-web-api-key": "*",
-    "steam-webapi": "*",
+    "@doctormckay/steam-webapi": "*",
     "steam-weblogon": "*",
     "steamcommunity": "^3.14.1593",
     "steamid": "*",

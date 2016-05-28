@@ -23,9 +23,13 @@ var admin_usernames = [];
 var admin_ids = [];
 
 var my_steamid;
+var lastTwoFactorCode = null;
 
 var config = [];
 var account_config = [];
+
+// number of seconds to wait between login attempts
+var loginSleepTime = 10;
 
 // main config
 if (fs.existsSync(configFile)) {
@@ -108,14 +112,21 @@ client.on('loggedOn', function(details) {
 	client.setPersona(SteamUser.Steam.EPersonaState.Online);
 	//client.gamesPlayed(440);
 	client.getSteamGuardDetails(function(enabled, enabledTime, machineTime, canTrade) {
-		console.log(enabled);
+		/*console.log(enabled);
 		console.log(enabledTime);
 		console.log(machineTime);
-		console.log(canTrade);
+		console.log(canTrade);*/
 	});
 });
 
 client.on('error', function(e) {
+	if(e = "Error: InvalidPassword") {
+		account_config.login_key = undefined;
+		// write new login key to config file
+		client.logOff();
+		var logOnOptions = getLogonOptions();
+		client.logOn(logOnOptions);
+	}
 	// Some error occurred during logon
 	console.log("Undefined error: "+e);
 });
@@ -182,6 +193,8 @@ client.on('licenses', function(licenses) {
 
 client.on('loginKey', function(loginKey) {
 	console.log("New Login Key: "+loginKey);
+	account_config.login_key = loginKey;
+	// write new login key to config file
 });
 
 client.on("sentry", function(sentry) {
@@ -226,11 +239,17 @@ manager.on('receivedOfferChanged', function(offer, oldState) {
  * steam-tradeoffer-manager methods END
  */
 
-var login_details = {
-	"accountName": account_config.username,
-	"password": account_config.password,
-	"twoFactorCode": SteamTotp.generateAuthCode(account_config.steam_guard.shared_secret)
-};
+var login_details;
+
+getLoginDetails();
+
+function getLoginDetails() {
+	login_details = {
+		"accountName": account_config.username,
+		"password": account_config.password,
+		"twoFactorCode": SteamTotp.generateAuthCode(account_config.steam_guard.shared_secret)
+	};
+}
 
 community.loggedIn(function(err, loggedIn) {
 	if(err != null) {
@@ -240,13 +259,7 @@ community.loggedIn(function(err, loggedIn) {
 	if(loggedIn) {
 		console.log("Logged into community");
 	} else {
-		community.login(login_details, function (err) {
-			console.log("Logging into community");
-			if (err != null) {
-				console.log("Failed to login to community: "+err);
-				process.exit(1);
-			}
-
+		community_login(function () {
 			console.log("Starting comfirmation polling");
 			community.startConfirmationChecker(10000, account_config.steam_guard.identity_secret);
 			console.log("Checking confirmations");
@@ -254,6 +267,32 @@ community.loggedIn(function(err, loggedIn) {
 		});
 	}
 });
+
+function community_login(callback) {
+	if(lastTwoFactorCode != login_details.twoFactorCode) {
+		lastTwoFactorCode = login_details.twoFactorCode;
+		community.login(login_details, function (err) {
+			console.log("Logging into community");
+			if (err != null) {
+				console.log("Failed to login to community: " + err);
+				community_login(callback);
+			} else {
+				if (typeof(callback) == "function") {
+					callback();
+				}
+			}
+		});
+	} else {
+		console.log("SteamGuard code has not changed yet: " + lastTwoFactorCode + " != " + login_details.twoFactorCode);
+
+		console.log("Sleeping " + loginSleepTime + " seconds and trying again...");
+		// wait for loginSleepTime seconds and try again
+		getLoginDetails();
+		setTimeout(function () {
+			community_login(callback);
+		}, 1000 * loginSleepTime);
+	}
+}
 
 community.on("newConfirmation", function(confirmation) {
 	console.log("New confirmation");

@@ -1,3 +1,4 @@
+#! /usr/bin/env node
 // monitor.js
 var io = require('socket.io');
 var ioServer = io.listen(8000)
