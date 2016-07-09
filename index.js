@@ -361,9 +361,13 @@ function processOffer(offer, callback) {
 				console.log("Unable to accept offer: " + err.message);
 				if(err.message == "HTTP error 403") {
 					// logoff and log back on
-					client.logOff();
+					setTimeout(function () {
+						client.logOff();
+					}, 1000 * loginSleepTime);
 					var logOnOptions = getLogonOptions();
-					client.logOn(logOnOptions);
+					setTimeout(function () {
+						client.logOn(logOnOptions);
+					}, 1000 * loginSleepTime);
 				}
 				//client.webLogOn();
 				//processOffer(offer, callback);
