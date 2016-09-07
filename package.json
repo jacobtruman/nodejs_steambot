@@ -27,9 +27,12 @@
   },
   "devDependencies": {},
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "postversion": "git push"
   },
-  "repository": "",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/jacobtruman/nodejs_steambot.git"
+  },
   "author": "Jacob Truman",
   "license": "BSD"
 }
