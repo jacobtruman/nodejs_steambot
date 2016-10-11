@@ -1,6 +1,6 @@
 #! /usr/bin/env node
 
-process.on('message', function (m) {
+process.on('message', function(m) {
 	console.log(m);
 });
 
@@ -57,7 +57,7 @@ var account_config = [];
 
 // variables
 var logDir = __dirname + "/logs/";
-mkdirp(logDir, function (err) {
+mkdirp(logDir, function(err) {
 	// path was created unless there was error
 });
 
@@ -71,6 +71,10 @@ var tf2 = new TeamFortress2(steamUser);
 var item_schema = [];
 var steam_webapi;
 
+var valid_item_slots = ["melee", "primary", "secondary", "pda2", "building"];
+var metalIndexes = {scrap: 5000, reclaimed: 5001, refined: 5002};
+var menu_wait = 2000; // 2 seconds
+
 var my_steamid = null;
 
 /**
@@ -78,9 +82,9 @@ var my_steamid = null;
  */
 
 // main config file
-if (fs.existsSync(configFile)) {
+if(fs.existsSync(configFile)) {
 	var data = fs.readFileSync(configFile, 'utf8');
-	if (data != undefined) {
+	if(data != undefined) {
 		config = JSON.parse(data);
 	} else {
 		throw Error("MISTAKE: there was a problem reading the config file: " + configFile);
@@ -92,9 +96,9 @@ var crates_to_keep = config.crates_to_keep || null;
 var crate_series_cap = config.crate_series_cap || null;
 
 // account config file
-if (fs.existsSync(accountConfigFile)) {
+if(fs.existsSync(accountConfigFile)) {
 	var data = fs.readFileSync(accountConfigFile, 'utf8');
-	if (data != undefined) {
+	if(data != undefined) {
 		account_config = JSON.parse(data);
 	} else {
 		throw Error("MISTAKE: there was a problem reading the config file: " + accountConfigFile);
@@ -104,7 +108,7 @@ if (fs.existsSync(accountConfigFile)) {
 }
 
 // make sure there is a username defined
-if (account_config.username == undefined) {
+if(account_config.username == undefined) {
 	throw new Error("Please specify username");
 }
 
@@ -114,13 +118,13 @@ var logOptions = {
 	date: true,
 	print: true,
 	//log_level: ["success", "error"],
-	log_level: ["success", "error"],
+	log_level: ["all"],
 	prefix: account_config.username
 };
 
 var myLog = new logger(logOptions);
 
-if (config.admin_accounts) {
+if(config.admin_accounts) {
 	admin_accounts = config.admin_accounts;
 }
 
@@ -128,7 +132,7 @@ function botLogon() {
 	myLog.success('Attempting to logon bot for ' + account_config.username);
 	// try to login with sentry file
 	sentryFile = __dirname + '/sentries/sentryfile.' + account_config.username;
-	if (fs.existsSync(sentryFile)) {
+	if(fs.existsSync(sentryFile)) {
 		myLog.success('Sentry file for ' + account_config.username + ' found.');
 		steamUser.logOn({
 			account_name: account_config.username,
@@ -152,7 +156,7 @@ function botLogon() {
 					}
 				}
 			};
-			prompt.get(schema, function (err, result) {
+			prompt.get(schema, function(err, result) {
 				steamUser.logOn({
 					account_name: account_config.username,
 					password: account_config.password,
@@ -164,7 +168,7 @@ function botLogon() {
 }
 
 steamClient.connect();
-steamClient.on('connected', function () {
+steamClient.on('connected', function() {
 	myLog.success("Steam Client connected");
 	botLogon();
 });
@@ -174,20 +178,20 @@ steamClient.on('connected', function () {
  */
 
 // bot debug stuff
-steamClient.on('debug', function (data) {
+steamClient.on('debug', function(data) {
 	myLog.info("BOT DEBUG: " + data);
 });
 
-steamClient.on('loggedOff', function () {
+steamClient.on('loggedOff', function() {
 	// try to log back on
 	botLogon();
 });
 
 // create sentry file
-steamClient.on('sentry', function (sentryHash) {
+steamClient.on('sentry', function(sentryHash) {
 	myLog.info("Creating sentry file");
-	fs.writeFile(sentryFile, sentryHash, function (err) {
-		if (err) {
+	fs.writeFile(sentryFile, sentryHash, function(err) {
+		if(err) {
 			myLog.error(err);
 		} else {
 			myLog.success('Saved sentry file hash as "' + sentryFile + '"');
@@ -196,14 +200,14 @@ steamClient.on('sentry', function (sentryHash) {
 });
 
 // logged in, set state to "online"
-steamClient.on('logOnResponse', function (logonResp) {
-	if (logonResp.eresult === steam.EResult.OK) {
+steamClient.on('logOnResponse', function(logonResp) {
+	if(logonResp.eresult === steam.EResult.OK) {
 		myLog.success(account_config.username + " logged on!");
 		var options = {};
 		options.APIKey = config.web_api_key;
-		setupWebAPI(options, function () {
-			getSchema(function () {
-				getMySteamId(function (steamId) {
+		setupWebAPI(options, function() {
+			getSchema(function() {
+				getMySteamId(function(steamId) {
 					myLog.info("Got my steam id: " + steamId);
 					myLog.chat("Launching TF2");
 					steamUser.gamesPlayed({"games_played": [{"game_id": 440}]});
@@ -215,43 +219,50 @@ steamClient.on('logOnResponse', function (logonResp) {
 
 tf2.on("backpackLoaded", function() {
 	myLog.info("Backpack loaded");
-	getSchema(function () {
+	getSchema(function() {
 		loadMenu();
 	});
 });
 
 function craftByGroup(grouped_items, num, callback) {
-	var craft_group = [];
-	for(var item_group in grouped_items) {
+	var grouped_items_keys = Object.keys(grouped_items);
+	if(grouped_items_keys.length > 0) {
+		var item_group = grouped_items_keys.pop();
 		var items = grouped_items[item_group];
-		myLog.attention(item_group+": "+items.length);
+		delete grouped_items[item_group];
+		myLog.attention(item_group + ": " + items.length);
 		if(item_group !== "refined") {
-			if(items.length >= num) {
-				for(var item_index in items) {
-					var item = items[item_index];
-					if (craft_group.length < num) {
-						craft_group.push(item.id);
-						if (craft_group.length == num) {
-							tf2.craft(craft_group);
-							// empty array
-							craft_group = [];
-							craft_group.length = 0;
-						}
-					}
-				}
-			}
+			craftGroupItems(items, num, function() {
+				craftByGroup(grouped_items, num, callback);
+			});
+		} else {
+			craftByGroup(grouped_items, num, callback);
 		}
-		craft_group = [];
-		craft_group.length = 0;
+	} else {
+		if(typeof(callback) == "function") {
+			callback(true);
+		}
 	}
+}
 
-	if (typeof(callback) == "function") {
-		callback(true);
+function craftGroupItems(items, num, callback) {
+	if(items.length >= num) {
+		var craft_group = [];
+		var i = 0;
+		while(i++ < num) {
+			craft_group.push(items.pop().id);
+		}
+		tf2.craft(craft_group);
+		craftGroupItems(items, num, callback);
+	} else {
+		if(typeof(callback) == "function") {
+			callback(true);
+		}
 	}
 }
 
 tf2.on("craftingComplete", function(recipe, itemsGained) {
-	myLog.attention(JSON.stringify(itemsGained));
+	myLog.attention("[on] craftingComplete recipe: " + JSON.stringify(recipe) + " items: " + JSON.stringify(itemsGained));
 });
 
 tf2.on("itemAcquired", function(item) {
@@ -269,75 +280,94 @@ tf2.on("itemRemoved", function(item) {
 	myLog.warning("[-] ITEM REMOVED");
 	getItemInfo(item, function(item_info) {
 		if(item_info.name !== undefined) {
-			myLog.warning("[-]" + item_info.name);
+			myLog.warning("[-] " + item_info.name);
 		} else {
 			myLog.attention(JSON.stringify(item_info));
 		}
 	});
 });
 
-function groupItems(user_items, callback) {
-	var defindex;
-	var itemInfo;
-	var item;
-	var valid_item_slots = ["melee", "primary", "secondary", "pda2", "building"];
-	var grouped_items = {scout:[], soldier:[], pyro:[], demoman:[], heavy:[], engineer:[], medic:[], sniper:[], spy:[]};
-	for(var item_index in user_items) {
-		item = user_items[item_index];
-		defindex = item.defindex;
-		// only "unique" items
-		if(item.quality === 6 && !isDefindexExcluded(defindex)) {
-			// check if it is craftable
-			if (item.flag_cannot_craft === undefined || !item.flag_cannot_craft) {
-				itemInfo = item_schema[defindex];
-				// exclude all-class items
-				if (itemInfo.used_by_classes !== undefined && itemInfo.used_by_classes.length > 0 && valid_item_slots.indexOf(itemInfo.item_slot) > -1) {
-					for(var item_class_index in itemInfo.used_by_classes) {
-						var item_class = itemInfo.used_by_classes[item_class_index].toLowerCase();
-						grouped_items[item_class].push(item);
-					}
-				}
+function groupItems(options, callback) {
+	if(options.items !== null && options.items.length > 0) {
+		if(options.grouped_items === null) {
+			options.grouped_items = {
+				scout: [],
+				soldier: [],
+				pyro: [],
+				demoman: [],
+				heavy: [],
+				engineer: [],
+				medic: [],
+				sniper: [],
+				spy: []
 			}
 		}
-	}
+		var item = options.items.pop();
+		var defindex = item.defindex;
 
-	if (typeof(callback) == "function") {
-		callback(grouped_items);
+		if(item.quality === 6 && !isDefindexExcluded(defindex)) {
+			// check if it is craftable
+			if(item.flag_cannot_craft === undefined || !item.flag_cannot_craft) {
+				var itemInfo = item_schema[defindex];
+				// exclude all-class items
+				if(itemInfo.used_by_classes !== undefined && itemInfo.used_by_classes.length > 0 && valid_item_slots.indexOf(itemInfo.item_slot) > -1) {
+					var i = 0;
+					for(var item_class_index in itemInfo.used_by_classes) {
+						i++;
+						var item_class = itemInfo.used_by_classes[item_class_index].toLowerCase();
+						options.grouped_items[item_class].push(item);
+
+						if(i >= (itemInfo.used_by_classes.length - 1)) {
+							groupItems(options, callback);
+						}
+					}
+				} else {
+					groupItems(options, callback);
+				}
+			} else {
+				groupItems(options, callback);
+			}
+		} else {
+			groupItems(options, callback);
+		}
+	} else {
+		if(typeof(callback) == "function") {
+			callback(options.grouped_items);
+		}
 	}
 }
 
-function groupMetal(user_items, callback) {
-	var defindex;
-	var item;
-	var metalIndexes = {scrap: 5000, reclaimed: 5001, refined: 5002};
-	var metal = {scrap:[], reclaimed:[], refined:[]};
-	for(var item_index in user_items) {
-		item = user_items[item_index];
-		defindex = item.defindex;
+function groupMetal(options, callback) {
+	if(options.items !== null && options.items.length > 0) {
+		if(options.grouped_items === null) {
+			options.grouped_items = {scrap: [], reclaimed: [], refined: []};
+		}
+		var item = options.items.pop();
+		var defindex = item.defindex;
 		// only "unique" items
 		if(item.quality === 6) {
 			// check if it is craftable
-			if (item.flag_cannot_craft === undefined || !item.flag_cannot_craft) {
+			if(item.flag_cannot_craft === undefined || !item.flag_cannot_craft) {
 				// scrap
 				if(defindex == metalIndexes.scrap) {
-					metal.scrap.push(item);
+					options.grouped_items.scrap.push(item);
+				} else if(defindex == metalIndexes.reclaimed) { // reclaimed
+					options.grouped_items.reclaimed.push(item);
+				} else if(defindex == metalIndexes.refined) { // refined
+					options.grouped_items.refined.push(item);
 				}
 
-				// reclaimed
-				if(defindex == metalIndexes.reclaimed) {
-					metal.reclaimed.push(item);
-				}
-
-				// refined
-				if(defindex == metalIndexes.refined) {
-					metal.refined.push(item);
-				}
+				groupMetal(options, callback);
+			} else {
+				groupMetal(options, callback);
 			}
+		} else {
+			groupMetal(options, callback);
 		}
-	}
-
-	if (typeof(callback) == "function") {
-		callback(metal);
+	} else {
+		if(typeof(callback) == "function") {
+			callback(options.grouped_items);
+		}
 	}
 }
 
@@ -400,38 +430,39 @@ function sortBackpack(callback) {
 	};
 
 	prompt.get(schema, function(err, result) {
-		var sortTypes = {0:"?", 1:"?", 2:"?", 3:"Quality", 4:"Type", 5:"Date"};
+		var sortTypes = {0: "?", 1: "?", 2: "?", 3: "Quality", 4: "Type", 5: "Date"};
 		var sortType = parseInt(result.sort);
 		var sortName = "unknown";
 
 		tf2.sortBackpack(sortType);
-		if (typeof(callback) == "function") {
+		if(typeof(callback) == "function") {
 			if(sortTypes[sortType] != undefined) {
 				sortName = sortTypes[sortType];
 			}
-			callback("Backpack has been sorted by "+sortName);
+			callback("Backpack has been sorted by " + sortName);
 		}
 	});
 }
 
 function userItemInfo(user_items, callback) {
-	for (var item_index in user_items) {
-		var item = user_items[item_index];
+	if(user_items.length > 0) {
+		var item = user_items.pop();
 		var defindex = item.defindex;
 		var itemInfo = item_schema[defindex];
 		myLog.info(JSON.stringify(item));
 		myLog.info(JSON.stringify(itemInfo));
-	}
-
-	if (typeof(callback) == "function") {
-		callback(true);
+		userItemInfo(user_items, callback);
+	} else {
+		if(typeof(callback) == "function") {
+			callback(true);
+		}
 	}
 }
 
 function isDefindexExcluded(defindex) {
 	var excluded = [264, 572, 727, 452, 466, 638, 574, 298, 294, 297];
 	if(excluded.indexOf(defindex) > -1) {
-		myLog.add("[*] Excluding "+defindex);
+		myLog.add("[*] Excluding " + defindex);
 		return true;
 	}
 	return false;
@@ -442,36 +473,36 @@ function isDefindexExcluded(defindex) {
  */
 
 function getSchema(callback) {
-	if (item_schema.length <= 0) {
+	if(item_schema.length <= 0) {
 		myLog.info("Getting schema...");
 		var item_count = 0;
 
 		steam_webapi.get("IEconItems_440", "GetSchema", 1, function(err, schema) {
-			if (err) {
+			if(err) {
 				// wait 5 seconds between tries
-				setTimeout(function () {
+				setTimeout(function() {
 					getSchema(callback)
 				}, 5000);
 			} else {
 				if(schema.result !== undefined && schema.result.items !== undefined) {
-					schema.result.items.forEach(function (item) {
+					schema.result.items.forEach(function(item) {
 						item_schema[item.defindex] = item;
 						item_count++;
 
-						if (item_count == schema.result.items.length && typeof(callback) == "function") {
+						if(item_count == schema.result.items.length && typeof(callback) == "function") {
 							callback(true);
 						}
 					});
 				} else {
 					// wait 5 seconds between tries
-					setTimeout(function () {
+					setTimeout(function() {
 						getSchema(callback)
 					}, 5000);
 				}
 			}
 		});
 	} else {
-		if (typeof(callback) == "function") {
+		if(typeof(callback) == "function") {
 			callback(true);
 		}
 	}
@@ -482,10 +513,10 @@ function getItemInfo(item, callback) {
 	if(item_schema[item.defIndex] !== undefined) {
 		item_info = item_schema[item.defIndex];
 	} else {
-		myLog.error("defindex "+item.defIndex+" not found in schema");
+		myLog.error("defindex " + item.defIndex + " not found in schema");
 	}
 
-	if (typeof(callback) == "function") {
+	if(typeof(callback) == "function") {
 		callback(item_info);
 	}
 }
@@ -494,18 +525,18 @@ function setupWebAPI(options, callback) {
 	myLog.info("Setting up WebAPI...");
 	steam_webapi = new SteamWebAPI(options.APIKey);
 	myLog.success("WebAPI setup complete");
-	if (typeof(callback) == "function") {
+	if(typeof(callback) == "function") {
 		callback(true);
 	}
 }
 
 function getMySteamId(callback) {
-	if (my_steamid === null) {
-		if (account_config.steamid !== undefined) {
+	if(my_steamid === null) {
+		if(account_config.steamid !== undefined) {
 			my_steamid = account_config.steamid;
 			myLog.warning("Setting my steam id from account_config: " + my_steamid);
 		} else {
-			if (admin_accounts[account_config.username] != undefined) {
+			if(admin_accounts[account_config.username] != undefined) {
 				my_steamid = admin_accounts[account_config.username].id;
 				myLog.warning("Setting my steam id from admin_accounts: " + my_steamid);
 			} else {
@@ -514,89 +545,93 @@ function getMySteamId(callback) {
 		}
 	}
 
-	if (typeof(callback) == "function" && my_steamid !== null) {
+	if(typeof(callback) == "function" && my_steamid !== null) {
 		callback(my_steamid);
 	}
 }
 
 function loadMenu() {
-	var menu = "Possible actions:\n";
-	menu += "scrap\n".yellow;
-	menu += "smelt\n".green;
-	menu += "delete\n".red;
-	menu += "sort\n".blue;
-	menu += "info\n".cyan;
-	menu += "exit\n".magenta;
-	console.log(menu);
+	setTimeout(function() {
+		var menu = "Possible actions:\n";
+		menu += "scrap\n".yellow;
+		menu += "smelt\n".green;
+		menu += "delete\n".red;
+		menu += "sort\n".blue;
+		menu += "info\n".cyan;
+		menu += "exit\n".magenta;
+		console.log(menu);
 
-	var schema = {
-		properties: {
-			action: {
-				message: 'What would you like to do?',
-				required: true
+		var schema = {
+			properties: {
+				action: {
+					message: 'What would you like to do?',
+					required: true
+				}
 			}
-		}
-	};
-	prompt.get(schema, function(err, result) {
-		var options  = {SteamID: my_steamid};
-		if(result.action == "exit") {
-			process.exit();
-		} else if(result.action == "scrap") {
-			steam_webapi.get("IEconItems_440", "GetPlayerItems", 1, options, function(err, response) {
-				if (response.result !== undefined && response.result.items !== undefined) {
-					var items = response.result.items;
-					groupItems(items, function(items) {
-						myLog.info("Scrapping");
-						craftByGroup(items, 2, function() {
+		};
+		prompt.get(schema, function(err, result) {
+			var options = {SteamID: my_steamid};
+			if(result.action == "exit") {
+				process.exit();
+			} else if(result.action == "scrap") {
+				steam_webapi.get("IEconItems_440", "GetPlayerItems", 1, options, function(err, response) {
+					if(response.result !== undefined && response.result.items !== undefined) {
+						var items = response.result.items;
+						groupItems({items: items, grouped_items: null}, function(grouped_items) {
+							myLog.info("Scrapping");
+							craftByGroup(grouped_items, 2, function() {
+								loadMenu();
+							});
+						});
+					}
+				});
+			} else if(result.action == "smelt") {
+				steam_webapi.get("IEconItems_440", "GetPlayerItems", 1, options, function(err, response) {
+					if(response.result !== undefined && response.result.items !== undefined) {
+						var items = response.result.items;
+						groupMetal({items: items, grouped_items: null}, function(grouped_metal) {
+							myLog.info("Smelting");
+							craftByGroup(grouped_metal, 3, function() {
+								loadMenu();
+							});
+						});
+					}
+				});
+			} else if(result.action == "delete") {
+				steam_webapi.get("IEconItems_440", "GetPlayerItems", 1, options, function(err, response) {
+					if(response.result !== undefined && response.result.items !== undefined) {
+						var items = response.result.items;
+						myLog.info("Deleting");
+						deleteCrates(items, function(msg) {
+							if(msg.length > 0) {
+								myLog.info(msg);
+							}
 							loadMenu();
 						});
-					});
-				}
-			});
-		} else if(result.action == "smelt") {
-			steam_webapi.get("IEconItems_440", "GetPlayerItems", 1, options, function(err, response) {
-				if (response.result !== undefined && response.result.items !== undefined) {
-					var items = response.result.items;
-					groupMetal(items, function(metal) {
-						myLog.info("Smelting");
-						craftByGroup(metal, 3, function() {
+					}
+				});
+			} else if(result.action == "info") {
+				steam_webapi.get("IEconItems_440", "GetPlayerItems", 1, options, function(err, response) {
+					if(response.result !== undefined && response.result.items !== undefined) {
+						var items = response.result.items;
+						userItemInfo(items, function() {
 							loadMenu();
 						});
-					});
-				}
-			});
-		} else if(result.action == "delete") {
-			steam_webapi.get("IEconItems_440", "GetPlayerItems", 1, options, function(err, response) {
-				if (response.result !== undefined && response.result.items !== undefined) {
-					var items = response.result.items;
-					myLog.info("Deleting");
-					deleteCrates(items, function(msg) {
-						if(msg.length > 0) {
-							myLog.info(msg);
-						}
-						loadMenu();
-					});
-				}
-			});
-		} else if(result.action == "info") {
-			steam_webapi.get("IEconItems_440", "GetPlayerItems", 1, options, function(err, response) {
-				if (response.result !== undefined && response.result.items !== undefined) {
-					var items = response.result.items;
-					userItemInfo(items);
-				}
-			});
-		} else if(result.action == "sort") {
-			myLog.info("Sorting");
-			sortBackpack(function(msg) {
-				if(msg.length > 0) {
-					myLog.info(msg);
-				}
+					}
+				});
+			} else if(result.action == "sort") {
+				myLog.info("Sorting");
+				sortBackpack(function(msg) {
+					if(msg.length > 0) {
+						myLog.info(msg);
+					}
+					loadMenu();
+				});
+			} else {
+				var msg = "#### \"" + result.action + "\" is not a valid action ####";
+				myLog.error(msg);
 				loadMenu();
-			});
-		} else {
-			var msg = "#### \""+result.action+"\" is not a valid action ####";
-			myLog.error(msg);
-			loadMenu();
-		}
-	});
+			}
+		});
+	}, menu_wait);
 }
