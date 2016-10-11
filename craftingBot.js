@@ -24,9 +24,6 @@ prompt.start();
 
 var admin_accounts = [];
 
-var crates_to_keep = [30, 40, 50, 60, 93, 94, 95, 96, 97];
-var crate_series_cap = 97;
-
 /*var connection = mysql.createConnection({
  host     : 'localhost',
  user     : '',
@@ -91,6 +88,8 @@ if (fs.existsSync(configFile)) {
 } else {
 	throw Error("MISTAKE: configFile does not exist: " + configFile);
 }
+var crates_to_keep = config.crates_to_keep || null;
+var crate_series_cap = config.crate_series_cap || null;
 
 // account config file
 if (fs.existsSync(accountConfigFile)) {
@@ -206,7 +205,7 @@ steamClient.on('logOnResponse', function (logonResp) {
 			getSchema(function () {
 				getMySteamId(function (steamId) {
 					myLog.info("Got my steam id: " + steamId);
-					console.log("Launching TF2");
+					myLog.chat("Launching TF2");
 					steamUser.gamesPlayed({"games_played": [{"game_id": 440}]});
 				});
 			});
@@ -215,8 +214,7 @@ steamClient.on('logOnResponse', function (logonResp) {
 });
 
 tf2.on("backpackLoaded", function() {
-	console.log("Backpack loaded");
-	//console.log(tf2.backpack);
+	myLog.info("Backpack loaded");
 	getSchema(function () {
 		loadMenu();
 	});
@@ -226,7 +224,7 @@ function craftByGroup(grouped_items, num, callback) {
 	var craft_group = [];
 	for(var item_group in grouped_items) {
 		var items = grouped_items[item_group];
-		console.log(item_group+": "+items.length);
+		myLog.attention(item_group+": "+items.length);
 		if(item_group !== "refined") {
 			if(items.length >= num) {
 				for(var item_index in items) {
@@ -253,30 +251,27 @@ function craftByGroup(grouped_items, num, callback) {
 }
 
 tf2.on("craftingComplete", function(recipe, itemsGained) {
-	//console.log(recipe);
-	console.log(itemsGained);
+	myLog.attention(JSON.stringify(itemsGained));
 });
 
 tf2.on("itemAcquired", function(item) {
-	console.log("ITEM ACQUIRED");
-	//console.log(item);
+	myLog.success("[+] ITEM ACQUIRED");
 	getItemInfo(item, function(item_info) {
 		if(item_info.name !== undefined) {
-			console.log(item_info.name);
+			myLog.success("[+]" + item_info.name);
 		} else {
-			console.log(item_info);
+			myLog.attention(JSON.stringify(item_info));
 		}
 	});
 });
 
 tf2.on("itemRemoved", function(item) {
-	console.log("ITEM REMOVED");
-	//console.log(item);
+	myLog.warning("[-] ITEM REMOVED");
 	getItemInfo(item, function(item_info) {
 		if(item_info.name !== undefined) {
-			console.log(item_info.name);
+			myLog.warning("[-]" + item_info.name);
 		} else {
-			console.log(item_info);
+			myLog.attention(JSON.stringify(item_info));
 		}
 	});
 });
@@ -347,45 +342,51 @@ function groupMetal(user_items, callback) {
 }
 
 function deleteCrates(user_items, callback) {
-	var schema = {
-		properties: {
-			confirm: {
-				message: 'Would you like to delete crates? (yes/no)',
-				default: "no",
-				required: true
+	if(crates_to_keep === null) {
+		myLog.warning("crates_to_keep is null - will not delete crates without this defined");
+	} else if(crate_series_cap === null) {
+		myLog.warning("crate_series_cap is null - will not delete crates without this defined");
+	} else {
+		var schema = {
+			properties: {
+				confirm: {
+					message: 'Would you like to delete crates? (yes/no)',
+					default: "no",
+					required: true
+				}
 			}
-		}
-	};
-	prompt.get(schema, function(err, result) {
-		if(result.confirm == "yes") {
-			console.log("DELETING CRATES");
-			for (var item_index in user_items) {
-				var item = user_items[item_index];
-				var defindex = item.defindex;
-				var itemInfo = item_schema[defindex];
+		};
+		prompt.get(schema, function(err, result) {
+			if(result.confirm == "yes") {
+				myLog.warning("[-] DELETING CRATES");
+				for(var item_index in user_items) {
+					var item = user_items[item_index];
+					var defindex = item.defindex;
+					var itemInfo = item_schema[defindex];
 
-				if (itemInfo.item_class == "supply_crate") {
-					console.log(itemInfo.name);
-					for (var attribute_index in itemInfo.attributes) {
-						if (itemInfo.attributes[attribute_index]['class'] == "supply_crate_series") {
-							var series = itemInfo.attributes[attribute_index]['value'];
-							if (crates_to_keep.indexOf(series) == -1 && series <= crate_series_cap) {
-								tf2.deleteItem(item.id);
+					if(itemInfo.item_class == "supply_crate") {
+						myLog.warning("[-] " + itemInfo.name);
+						for(var attribute_index in itemInfo.attributes) {
+							if(itemInfo.attributes[attribute_index]['class'] == "supply_crate_series") {
+								var series = itemInfo.attributes[attribute_index]['value'];
+								if(crates_to_keep.indexOf(series) == -1 && series <= crate_series_cap) {
+									tf2.deleteItem(item.id);
+								}
 							}
 						}
 					}
 				}
-			}
 
-			if (typeof(callback) == "function") {
-				callback(true);
+				if(typeof(callback) == "function") {
+					callback(true);
+				}
+			} else {
+				if(typeof(callback) == "function") {
+					callback("NOT deleting");
+				}
 			}
-		} else {
-			if (typeof(callback) == "function") {
-				callback("NOT deleting");
-			}
-		}
-	});
+		});
+	}
 }
 
 function sortBackpack(callback) {
@@ -418,8 +419,8 @@ function userItemInfo(user_items, callback) {
 		var item = user_items[item_index];
 		var defindex = item.defindex;
 		var itemInfo = item_schema[defindex];
-		console.log(item);
-		console.log(itemInfo);
+		myLog.info(JSON.stringify(item));
+		myLog.info(JSON.stringify(itemInfo));
 	}
 
 	if (typeof(callback) == "function") {
@@ -430,7 +431,7 @@ function userItemInfo(user_items, callback) {
 function isDefindexExcluded(defindex) {
 	var excluded = [264, 572, 727, 452, 466, 638, 574, 298, 294, 297];
 	if(excluded.indexOf(defindex) > -1) {
-		console.log("Excluding "+defindex);
+		myLog.add("[*] Excluding "+defindex);
 		return true;
 	}
 	return false;
@@ -545,7 +546,7 @@ function loadMenu() {
 				if (response.result !== undefined && response.result.items !== undefined) {
 					var items = response.result.items;
 					groupItems(items, function(items) {
-						console.log("Scrapping");
+						myLog.info("Scrapping");
 						craftByGroup(items, 2, function() {
 							loadMenu();
 						});
@@ -557,7 +558,7 @@ function loadMenu() {
 				if (response.result !== undefined && response.result.items !== undefined) {
 					var items = response.result.items;
 					groupMetal(items, function(metal) {
-						console.log("Smelting");
+						myLog.info("Smelting");
 						craftByGroup(metal, 3, function() {
 							loadMenu();
 						});
@@ -568,10 +569,10 @@ function loadMenu() {
 			steam_webapi.get("IEconItems_440", "GetPlayerItems", 1, options, function(err, response) {
 				if (response.result !== undefined && response.result.items !== undefined) {
 					var items = response.result.items;
-					console.log("Deleting");
+					myLog.info("Deleting");
 					deleteCrates(items, function(msg) {
 						if(msg.length > 0) {
-							console.log(msg);
+							myLog.info(msg);
 						}
 						loadMenu();
 					});
@@ -585,16 +586,16 @@ function loadMenu() {
 				}
 			});
 		} else if(result.action == "sort") {
-			console.log("Sorting");
+			myLog.info("Sorting");
 			sortBackpack(function(msg) {
 				if(msg.length > 0) {
-					console.log(msg);
+					myLog.info(msg);
 				}
 				loadMenu();
 			});
 		} else {
 			var msg = "#### \""+result.action+"\" is not a valid action ####";
-			console.log(msg.red);
+			myLog.error(msg);
 			loadMenu();
 		}
 	});
