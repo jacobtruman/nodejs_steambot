@@ -32,6 +32,7 @@ mkdirp(logDir, function(err) {
 var dataDirectory = __dirname + "/data";
 var admin_usernames = [];
 var admin_ids = [];
+var admins = {};
 
 var my_steamid;
 var lastTwoFactorCode = null;
@@ -94,6 +95,7 @@ if(config.admin_accounts) {
 		admin_usernames.push(account);
 		if(config.admin_accounts[account].id != undefined) {
 			sid = new SteamID(config.admin_accounts[account].id);
+			admins[config.admin_accounts[account].id] = account;
 			admin_ids.push(sid);
 		}
 	}
@@ -375,12 +377,17 @@ function processOfferByID(id, callback) {
 function processOffer(offer, callback) {
 	myLog.attention("Process offer");
 	if(isAdminSteamID(offer.partner)) {
-		// TODO: get partner name
-		myLog.attention("## Admin offer");
+		var partner_name;
+		if(admins[JSON.stringify(offer.partner)] !== undefined) {
+			partner_name = admins[JSON.stringify(offer.partner)];
+		} else {
+			partner_name = "unknown";
+		}
+		myLog.attention("## Admin offer from " + partner_name);
 		offer.accept(function(err) {
 			var ret = true;
 			if(err) {
-				myLog.error("Unable to accept offer: " + err.message);
+				myLog.error("Unable to accept offer from " + partner_name + ": " + err.message);
 				if(err.message == "HTTP error 403") {
 					// logoff and log back on
 					setTimeout(function() {
@@ -395,7 +402,7 @@ function processOffer(offer, callback) {
 				//processOffer(offer, callback);
 				ret = false;
 			} else {
-				myLog.success("Offer accepted");
+				myLog.success("Offer from " + partner_name + " accepted");
 			}
 
 			if(typeof(callback) == "function") {
