@@ -2,6 +2,8 @@
 
 // requires
 var fs = require('fs');
+var logger = require('tru-logger');
+var mkdirp = require('mkdirp');
 var SteamID = require('steamid');
 var SteamUser = require('steam-user');
 var SteamTotp = require('steam-totp');
@@ -21,6 +23,12 @@ var configsDir = __dirname + "/configs";
 var configFile = configsDir + "/config.json";
 var accountConfigFile = configsDir + "/" + username + ".json";
 
+// variables
+var logDir = __dirname + "/logs/";
+mkdirp(logDir, function(err) {
+	// path was created unless there was error
+});
+
 var dataDirectory = __dirname + "/data";
 var admin_usernames = [];
 var admin_ids = [];
@@ -35,9 +43,9 @@ var account_config = [];
 var loginSleepTime = 10;
 
 // main config
-if (fs.existsSync(configFile)) {
+if(fs.existsSync(configFile)) {
 	var data = fs.readFileSync(configFile, 'utf8');
-	if (data != undefined) {
+	if(data != undefined) {
 		config = JSON.parse(data);
 	} else {
 		throw Error("MISTAKE: there was a problem reading the config file: " + configFile);
@@ -47,9 +55,9 @@ if (fs.existsSync(configFile)) {
 }
 
 // account config
-if (fs.existsSync(accountConfigFile)) {
+if(fs.existsSync(accountConfigFile)) {
 	var data = fs.readFileSync(accountConfigFile, 'utf8');
-	if (data != undefined) {
+	if(data != undefined) {
 		account_config = JSON.parse(data);
 	} else {
 		throw Error("MISTAKE: there was a problem reading the config file: " + accountConfigFile);
@@ -59,18 +67,30 @@ if (fs.existsSync(accountConfigFile)) {
 }
 
 // make sure there is a username defined
-if (account_config.username == undefined) {
+if(account_config.username == undefined) {
 	throw new Error("Please specify username");
 }
 
 // make sure there is a password defined
-if (account_config.password == undefined) {
+if(account_config.password == undefined) {
 	throw new Error("Please specify password");
 }
 
-if (config.admin_accounts) {
+// initialize log
+var logOptions = {
+	file: logDir + account_config.username + ".txt",
+	date: true,
+	print: true,
+	//log_level: ["success", "error"],
+	log_level: ["all"],
+	prefix: account_config.username
+};
+
+var myLog = new logger(logOptions);
+
+if(config.admin_accounts) {
 	var sid;
-	for (account in config.admin_accounts) {
+	for(account in config.admin_accounts) {
 		admin_usernames.push(account);
 		if(config.admin_accounts[account].id != undefined) {
 			sid = new SteamID(config.admin_accounts[account].id);
@@ -111,14 +131,14 @@ client.logOn(logOnOptions);
 
 client.on('loggedOn', function(details) {
 	my_steamid = client.steamID;
-	console.log("Logged into Steam as " + client.steamID.getSteam3RenderedID());
+	myLog.success("Logged into Steam as " + client.steamID.getSteam3RenderedID());
 	client.setPersona(SteamUser.Steam.EPersonaState.Online);
 	//client.gamesPlayed(440);
 	client.getSteamGuardDetails(function(enabled, enabledTime, machineTime, canTrade) {
-		/*console.log(enabled);
-		console.log(enabledTime);
-		console.log(machineTime);
-		console.log(canTrade);*/
+		/*myLog.info(enabled);
+		 myLog.info(enabledTime);
+		 myLog.info(machineTime);
+		 myLog.info(canTrade);*/
 	});
 });
 
@@ -131,30 +151,30 @@ client.on('error', function(e) {
 		client.logOn(logOnOptions);
 	}
 	// Some error occurred during logon
-	console.log("Undefined error: "+e);
+	myLog.error("Undefined error: " + e);
 });
 
 client.on('webSession', function(sessionID, cookies) {
 	manager.setCookies(cookies, function(err) {
 		if(err) {
-			console.log(err);
+			myLog.error(err);
 			process.exit(1); // Fatal error since we couldn't get API key
 		}
 
-		console.log("Got API key: " + manager.apiKey);
+		myLog.success("Got API key: " + manager.apiKey);
 	});
 });
 
 client.on('newItems', function(count) {
-	console.log(count + " new items in this account's inventory");
+	myLog.success(count + " new items in this account's inventory");
 });
 
 client.on('emailInfo', function(address, validated) {
-	console.log("The email address of this account is " + address + " and it's " + (validated ? "validated" : "not validated"));
+	myLog.info("The email address of this account is " + address + " and it's " + (validated ? "validated" : "not validated"));
 });
 
 client.on('wallet', function(hasWallet, currency, balance) {
-	console.log("This account's wallet balance is " + SteamUser.formatCurrency(balance, currency));
+	myLog.info("This account's wallet balance is " + SteamUser.formatCurrency(balance, currency));
 });
 
 client.on('accountLimitations', function(limited, communityBanned, locked, canInviteFriends) {
@@ -173,41 +193,41 @@ client.on('accountLimitations', function(limited, communityBanned, locked, canIn
 	}
 
 	if(limitations.length === 0) {
-		console.log("This account has no limitations.");
+		myLog.info("This account has no limitations.");
 	} else {
-		console.log("This account is " + limitations.join(', ') + ".");
+		myLog.warning("This account is " + limitations.join(', ') + ".");
 	}
 
 	if(canInviteFriends) {
-		console.log("This account can invite friends.");
+		myLog.info("This account can invite friends.");
 	}
 });
 
 client.on('vacBans', function(numBans, appids) {
-	console.log("This account has " + numBans + " VAC ban" + (numBans == 1 ? '' : 's') + ".");
+	myLog.warning("This account has " + numBans + " VAC ban" + (numBans == 1 ? '' : 's') + ".");
 	if(appids.length > 0) {
-		console.log("This account is VAC banned from apps: " + appids.join(', '));
+		myLog.error("This account is VAC banned from apps: " + appids.join(', '));
 	}
 });
 
 client.on('licenses', function(licenses) {
-	console.log("This account owns " + licenses.length + " license" + (licenses.length == 1 ? '' : 's') + ".");
+	myLog.chat("This account owns " + licenses.length + " license" + (licenses.length == 1 ? '' : 's') + ".");
 });
 
 client.on('loginKey', function(loginKey) {
-	console.log("New Login Key: "+loginKey);
+	myLog.info("New Login Key: " + loginKey);
 	account_config.login_key = loginKey;
 	// write new login key to config file
 	fs.writeFile(accountConfigFile, JSON.stringify(account_config, null, "\t"), function(err) {
 		if(err) {
-			console.log(err);
+			myLog.error(err);
 		}
-		console.log("The config file \"" + accountConfigFile + "\" was saved");
+		myLog.info("The config file \"" + accountConfigFile + "\" was saved");
 	});
 });
 
 client.on("sentry", function(sentry) {
-	console.log(sentry);
+	myLog.attention(sentry);
 });
 /**
  * steam-user client methods END
@@ -217,7 +237,7 @@ client.on("sentry", function(sentry) {
  * steam-tradeoffer-manager methods BEGIN
  */
 manager.on('newOffer', function(offer) {
-	console.log("New offer #" + offer.id + " from " + offer.partner.getSteam3RenderedID());
+	myLog.warning("New offer #" + offer.id + " from " + offer.partner.getSteam3RenderedID());
 	processOffer(offer, function(passed) {
 		if(passed) {
 			community.checkConfirmations();
@@ -226,19 +246,19 @@ manager.on('newOffer', function(offer) {
 });
 
 manager.on('receivedOfferChanged', function(offer, oldState) {
-	console.log("Offer #" + offer.id + " changed: " + TradeOfferManager.ETradeOfferState[oldState] + " -> " + TradeOfferManager.ETradeOfferState[offer.state]);
+	myLog.info("Offer #" + offer.id + " changed: " + TradeOfferManager.ETradeOfferState[oldState] + " -> " + TradeOfferManager.ETradeOfferState[offer.state]);
 
 	if(offer.state == TradeOfferManager.ETradeOfferState.Accepted) {
 		offer.getReceivedItems(function(err, items) {
 			if(err) {
-				console.log("Couldn't get received items: " + err);
+				myLog.error("Couldn't get received items: " + err);
 			} else {
-				if (items.length > 0) {
-					var names = items.map(function (item) {
+				if(items.length > 0) {
+					var names = items.map(function(item) {
 						return item.name;
 					});
 
-					console.log("Received: " + names.join(', '));
+					myLog.success("Received: " + names.join(', '));
 				}
 			}
 		});
@@ -262,16 +282,16 @@ function getLoginDetails() {
 
 community.loggedIn(function(err, loggedIn) {
 	if(err != null) {
-		console.log(err);
+		myLog.error(err);
 		process.exit(1);
 	}
 	if(loggedIn) {
-		console.log("Logged into community");
+		myLog.success("Already logged into community");
 	} else {
-		community_login(function () {
-			console.log("Starting comfirmation polling");
+		community_login(function() {
+			myLog.info("Starting comfirmation polling");
 			community.startConfirmationChecker(10000, account_config.steam_guard.identity_secret);
-			console.log("Checking confirmations");
+			myLog.info("Checking confirmations");
 			community.checkConfirmations();
 		});
 	}
@@ -280,69 +300,70 @@ community.loggedIn(function(err, loggedIn) {
 function community_login(callback) {
 	if(lastTwoFactorCode != login_details.twoFactorCode) {
 		lastTwoFactorCode = login_details.twoFactorCode;
-		community.login(login_details, function (err) {
-			console.log("Logging into community");
-			if (err != null) {
-				console.log("Failed to login to community: " + err);
+		community.login(login_details, function(err) {
+			myLog.info("Logging into community");
+			if(err != null) {
+				myLog.error("Failed to login to community: " + err);
 				community_login(callback);
 			} else {
-				if (typeof(callback) == "function") {
+				myLog.success("Successfully logged into community");
+				if(typeof(callback) == "function") {
 					callback();
 				}
 			}
 		});
 	} else {
-		console.log("SteamGuard code has not changed yet: " + lastTwoFactorCode + " == " + login_details.twoFactorCode);
+		myLog.warning("SteamGuard code has not changed yet: " + lastTwoFactorCode + " == " + login_details.twoFactorCode);
 
-		console.log("Sleeping " + loginSleepTime + " seconds and trying again...");
+		myLog.attention("Sleeping " + loginSleepTime + " seconds and trying again...");
 		// wait for loginSleepTime seconds and try again
 		getLoginDetails();
-		setTimeout(function () {
+		setTimeout(function() {
 			community_login(callback);
 		}, 1000 * loginSleepTime);
 	}
 }
 
 community.on("newConfirmation", function(confirmation) {
-	console.log("New confirmation");
+	myLog.attention("New confirmation");
 	processConfirmation(confirmation, function(passed) {
-		console.log(passed);
+		myLog.success(passed);
 	});
 });
 
 community.on("confKeyNeeded", function(tag, callback) {
-	console.log("Confirmation key needed");
+	myLog.warning("Confirmation key needed");
 	var time = Math.floor(Date.now() / 1000);
-	console.log(callback.toString());
+	myLog.info(callback.toString());
 	callback(null, time, SteamTotp.getConfirmationKey(account_config.steam_guard.identity_secret, time, tag));
 });
 
 function processConfirmation(confirmation, callback) {
 	var time = Math.floor(Date.now() / 1000);
 	var key = SteamTotp.getConfirmationKey(account_config.steam_guard.identity_secret, time, "conf");
-	community.respondToConfirmation(confirmation.id, confirmation.key, time, key, true, function (err) {
-		console.log("Responding to confirmation "+confirmation.id);
+	community.respondToConfirmation(confirmation.id, confirmation.key, time, key, true, function(err) {
+		myLog.info("Responding to confirmation " + confirmation.id);
 		var ret = true;
-		if (err != null) {
-			console.log(err);
+		if(err != null) {
+			myLog.error(err);
 			ret = false;
-			console.log("Responding to confirmation "+confirmation.id+" failed");
+			myLog.error("Responding to confirmation " + confirmation.id + " failed");
 		} else {
-			console.log("Responding to confirmation "+confirmation.id+" succeeded");
+			myLog.success("Responding to confirmation " + confirmation.id + " succeeded");
 		}
 
-		if (typeof(callback) == "function") {
+		if(typeof(callback) == "function") {
 			callback(ret);
 		}
 	});
 }
 
 function processOfferByID(id, callback) {
-	console.log("Process offer by id "+id);
+	myLog.attention("Process offer by id " + id);
 	getOffer(id, function(err, offer) {
 		if(err != null) {
-			console.log(err);
-			if (typeof(callback) == "function") {
+			myLog.error(err);
+			if(typeof(callback) == "function") {
 				callback(false);
 			}
 		} else {
@@ -352,20 +373,21 @@ function processOfferByID(id, callback) {
 }
 
 function processOffer(offer, callback) {
-	console.log("Process offer");
+	myLog.attention("Process offer");
 	if(isAdminSteamID(offer.partner)) {
-		console.log("## Admin offer");
-		offer.accept(function (err) {
+		// TODO: get partner name
+		myLog.attention("## Admin offer");
+		offer.accept(function(err) {
 			var ret = true;
-			if (err) {
-				console.log("Unable to accept offer: " + err.message);
+			if(err) {
+				myLog.error("Unable to accept offer: " + err.message);
 				if(err.message == "HTTP error 403") {
 					// logoff and log back on
-					setTimeout(function () {
+					setTimeout(function() {
 						client.logOff();
 					}, 1000 * loginSleepTime);
 					var logOnOptions = getLogonOptions();
-					setTimeout(function () {
+					setTimeout(function() {
 						client.logOn(logOnOptions);
 					}, 1000 * loginSleepTime);
 				}
@@ -373,16 +395,16 @@ function processOffer(offer, callback) {
 				//processOffer(offer, callback);
 				ret = false;
 			} else {
-				console.log("Offer accepted");
+				myLog.success("Offer accepted");
 			}
 
-			if (typeof(callback) == "function") {
+			if(typeof(callback) == "function") {
 				callback(ret);
 			}
 		});
 	} else {
-		console.log("## Not an admin");
-		if (typeof(callback) == "function") {
+		myLog.warning("## Not an admin");
+		if(typeof(callback) == "function") {
 			callback(false);
 		}
 	}
@@ -405,26 +427,26 @@ function getLogonOptions() {
 	if(account_config.steam_guard.shared_secret != undefined) {
 		options.twoFactorCode = SteamTotp.generateAuthCode(account_config.steam_guard.shared_secret);
 	}
-	//console.log(options);
+	//myLog.info(options);
 
 	return options;
 }
 
 
 function showMethods(obj) {
-	console.log("\nMETHODS\n");
+	myLog.attention("\nMETHODS\n");
 	for(var m in obj) {
 		if(typeof obj[m] == "function") {
-			console.log(m);
+			myLog.chat(m);
 		}
 	}
 }
 
 function showMembers(obj) {
-	console.log("\nMEMBERS\n");
+	myLog.attention("\nMEMBERS\n");
 	for(var m in obj) {
 		if(typeof obj[m] != "function") {
-			console.log(m);
+			myLog.chat(m);
 		}
 	}
 }

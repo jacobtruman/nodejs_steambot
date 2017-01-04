@@ -114,7 +114,7 @@ if(account_config.username == undefined) {
 
 // initialize log
 var logOptions = {
-	file: logDir + account_config.username + ".txt",
+	file: logDir + account_config.username + "_craft.txt",
 	date: true,
 	print: true,
 	//log_level: ["success", "error"],
@@ -246,19 +246,25 @@ function craftByGroup(grouped_items, num, callback) {
 }
 
 function craftGroupItems(items, num, callback) {
-	if(items.length >= num) {
-		var craft_group = [];
-		var i = 0;
-		while(i++ < num) {
-			craft_group.push(items.pop().id);
+	// wait 1 second between tries
+	setTimeout(function() {
+		if(items.length >= num) {
+			console.log(items.length + " >= " + num);
+			var craft_group = [];
+			while(craft_group.length < num) {
+				craft_group.push(items.pop().id);
+				if(craft_group.length == num) {
+					tf2.craft(craft_group);
+				}
+			}
+			craftGroupItems(items, num, callback);
+		} else {
+			console.log(items.length + " <= " + num);
+			if(typeof(callback) == "function") {
+				callback(true);
+			}
 		}
-		tf2.craft(craft_group);
-		craftGroupItems(items, num, callback);
-	} else {
-		if(typeof(callback) == "function") {
-			callback(true);
-		}
-	}
+	}, 1000);
 }
 
 tf2.on("craftingComplete", function(recipe, itemsGained) {
@@ -315,10 +321,16 @@ function groupItems(options, callback) {
 					for(var item_class_index in itemInfo.used_by_classes) {
 						i++;
 						var item_class = itemInfo.used_by_classes[item_class_index].toLowerCase();
+						if(options.grouped_items[item_class] === undefined) {
+							console.log(options.grouped_items);
+							console.log("creating group " + item_class);
+							options.grouped_items[item_class] = [];
+						}
 						options.grouped_items[item_class].push(item);
 
 						if(i >= (itemInfo.used_by_classes.length - 1)) {
 							groupItems(options, callback);
+							break;
 						}
 					}
 				} else {
@@ -575,48 +587,68 @@ function loadMenu() {
 				process.exit();
 			} else if(result.action == "scrap") {
 				steam_webapi.get("IEconItems_440", "GetPlayerItems", 1, options, function(err, response) {
-					if(response.result !== undefined && response.result.items !== undefined) {
-						var items = response.result.items;
-						groupItems({items: items, grouped_items: null}, function(grouped_items) {
-							myLog.info("Scrapping");
-							craftByGroup(grouped_items, 2, function() {
-								loadMenu();
+					if(response !== undefined) {
+						if(response.result !== undefined && response.result.items !== undefined) {
+							var items = response.result.items;
+							groupItems({items: items, grouped_items: null}, function(grouped_items) {
+								myLog.info("Scrapping");
+								craftByGroup(grouped_items, 2, function() {
+									loadMenu();
+								});
 							});
-						});
+						}
+					} else {
+						myLog.error("GetPlayerItems failed");
+						loadMenu();
 					}
 				});
 			} else if(result.action == "smelt") {
 				steam_webapi.get("IEconItems_440", "GetPlayerItems", 1, options, function(err, response) {
-					if(response.result !== undefined && response.result.items !== undefined) {
-						var items = response.result.items;
-						groupMetal({items: items, grouped_items: null}, function(grouped_metal) {
-							myLog.info("Smelting");
-							craftByGroup(grouped_metal, 3, function() {
-								loadMenu();
+					if(response !== undefined) {
+						if(response.result !== undefined && response.result.items !== undefined) {
+							var items = response.result.items;
+							groupMetal({items: items, grouped_items: null}, function(grouped_metal) {
+								myLog.info("Smelting");
+								craftByGroup(grouped_metal, 3, function() {
+									loadMenu();
+								});
 							});
-						});
+						}
+					} else {
+						myLog.error("GetPlayerItems failed");
+						loadMenu();
 					}
 				});
 			} else if(result.action == "delete") {
 				steam_webapi.get("IEconItems_440", "GetPlayerItems", 1, options, function(err, response) {
-					if(response.result !== undefined && response.result.items !== undefined) {
-						var items = response.result.items;
-						myLog.info("Deleting");
-						deleteCrates(items, function(msg) {
-							if(msg.length > 0) {
-								myLog.info(msg);
-							}
-							loadMenu();
-						});
+					if(response !== undefined) {
+						if(response.result !== undefined && response.result.items !== undefined) {
+							var items = response.result.items;
+							myLog.info("Deleting");
+							deleteCrates(items, function(msg) {
+								if(msg.length > 0) {
+									myLog.info(msg);
+								}
+								loadMenu();
+							});
+						}
+					} else {
+						myLog.error("GetPlayerItems failed");
+						loadMenu();
 					}
 				});
 			} else if(result.action == "info") {
 				steam_webapi.get("IEconItems_440", "GetPlayerItems", 1, options, function(err, response) {
-					if(response.result !== undefined && response.result.items !== undefined) {
-						var items = response.result.items;
-						userItemInfo(items, function() {
-							loadMenu();
-						});
+					if(response !== undefined) {
+						if(response.result !== undefined && response.result.items !== undefined) {
+							var items = response.result.items;
+							userItemInfo(items, function() {
+								loadMenu();
+							});
+						}
+					} else {
+						myLog.error("GetPlayerItems failed");
+						loadMenu();
 					}
 				});
 			} else if(result.action == "sort") {
