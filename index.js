@@ -378,8 +378,9 @@ function processOffer(offer, callback) {
 	myLog.attention("Process offer");
 	if(isAdminSteamID(offer.partner)) {
 		var partner_name;
-		if(admins[JSON.stringify(offer.partner)] !== undefined) {
-			partner_name = admins[JSON.stringify(offer.partner)];
+		var partner_id = offer.partner.getSteamID64();
+		if(admins[partner_id] !== undefined) {
+			partner_name = admins[partner_id];
 		} else {
 			partner_name = "unknown";
 		}
