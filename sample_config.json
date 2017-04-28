@@ -1,0 +1,12 @@
+{
+  "admin_accounts": {
+	"ADMIN_ACCOUNT1": {
+	  "id": "ACCOUNT_ID1"
+	},
+	"ADMIN_ACCOUNT2": {
+	  "id": "ACCOUNT_ID2"
+	}
+  },
+  "web_api_key": "WEB_API_KEY",
+  "backpacktf_key": "BACKPACKTF_KEY"
+}

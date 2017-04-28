@@ -13,7 +13,15 @@ var TradeOfferManager = require('steam-tradeoffer-manager');
 // cli paramters
 var args = process.argv.splice(2);
 
-var username = args[0];
+var username;
+
+if(args[0]) {
+	username = args[0];
+} else if(process.env.TF2BOT_USERNAME) {
+	username = process.env.TF2BOT_USERNAME;
+} else {
+	throw Error("MISTAKE: no username provided");
+}
 
 var client = new SteamUser();
 var community = new SteamCommunity();
@@ -64,7 +72,7 @@ if(fs.existsSync(accountConfigFile)) {
 		throw Error("MISTAKE: there was a problem reading the config file: " + accountConfigFile);
 	}
 } else {
-	throw Error("MISTAKE: configFile does not exist: " + accountConfigFile);
+	throw Error("MISTAKE: accountConfigFile does not exist: " + accountConfigFile);
 }
 
 // make sure there is a username defined
