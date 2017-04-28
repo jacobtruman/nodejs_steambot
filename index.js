@@ -17,8 +17,8 @@ var username;
 
 if(args[0]) {
 	username = args[0];
-} else if(process.env.TF2BOT_USERNAME) {
-	username = process.env.TF2BOT_USERNAME;
+} else if(process.env.STEAMBOT_USERNAME) {
+	username = process.env.STEAMBOT_USERNAME;
 } else {
 	throw Error("MISTAKE: no username provided");
 }
