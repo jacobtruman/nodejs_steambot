@@ -47,9 +47,19 @@ var admin_accounts = [];
 // cli parameters
 var args = process.argv.splice(2);
 
+var username;
+
+if(args[0]) {
+	username = args[0];
+} else if(process.env.STEAMBOT_USERNAME) {
+	username = process.env.STEAMBOT_USERNAME;
+} else {
+	throw Error("MISTAKE: no username provided");
+}
+
 // configs
 var configFile = __dirname + "/configs/config.json";
-var accountConfigFile = __dirname + "/configs/" + args[0] + ".json";
+var accountConfigFile = __dirname + "/configs/" + username + ".json";
 
 // bot config objects
 var config = [];

@@ -6,7 +6,17 @@ var SteamTotp = require('steam-totp');
 
 var args = process.argv.splice(2);
 
-var accountConfigFile = __dirname + "/configs/" + args[0] + ".json";
+var username;
+
+if(args[0]) {
+	username = args[0];
+} else if(process.env.STEAMBOT_USERNAME) {
+	username = process.env.STEAMBOT_USERNAME;
+} else {
+	throw Error("MISTAKE: no username provided");
+}
+
+var accountConfigFile = __dirname + "/configs/" + username + ".json";
 
 // account config file
 if (fs.existsSync(accountConfigFile)) {
