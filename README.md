@@ -8,3 +8,13 @@ Install it from [npm](https://www.npmjs.com/package/nodejs_steambot) or check ou
 # Support
 
 Report bugs on the [issue tracker](https://github.com/jacobtruman/nodejs_steambot/issues).
+
+#Installation
+This will guide users on how to istall the bot
+
+1. Download and extract the bot to somewhere easy to access. E.g Desktop
+2. Run cmd and cd to the file  E.g (my bot's file is named bot) `cd desktop` then, `cd bot`
+3. Do `npm install`
+4. After it is done, make a subfolder named `configs`
+5. Copy `sample_userconfig.json` into the `configs` folder
+6. Make 2 copies of that and renaming 1 of them to `config.json` and another to `username.json` *username.json can be renamed to anything
