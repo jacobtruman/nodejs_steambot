@@ -11,7 +11,7 @@ Report bugs on the [issue tracker](https://github.com/jacobtruman/nodejs_steambo
 
 # Installation
 
-This will guide users on how to istall the bot
+This will guide users on how to install the bot
 
 1. Download and extract the bot to somewhere easy to access. E.g Desktop
 2. Run cmd and cd to the file  E.g (my bot's file is named bot) `cd desktop` then, `cd bot`
