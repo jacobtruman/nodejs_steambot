@@ -9,7 +9,8 @@ Install it from [npm](https://www.npmjs.com/package/nodejs_steambot) or check ou
 
 Report bugs on the [issue tracker](https://github.com/jacobtruman/nodejs_steambot/issues).
 
-#Installation
+# Installation
+
 This will guide users on how to istall the bot
 
 1. Download and extract the bot to somewhere easy to access. E.g Desktop
