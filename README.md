@@ -8,7 +8,7 @@ Install it from [npm](https://www.npmjs.com/package/nodejs_steambot) or check ou
 # Support
 
 Report bugs on the [issue tracker](https://github.com/jacobtruman/nodejs_steambot/issues).
-If you need help extracting your steam file, contact [LeeTheGayKid](www.steamcommunity.com/id/jingyong) <b>You will need your phone to be rooted !</b>
+If you need help extracting your steam file, contact [LeeTheGayKid](http://www.steamcommunity.com/id/jingyong) <b>You will need your phone to be rooted !</b>
 
 # Installation
 
