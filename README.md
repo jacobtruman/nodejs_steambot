@@ -41,4 +41,4 @@ This will guide you on how to run the bot
 1. Run cmd and cd to the file  E.g (my bot's file is named bot) `cd desktop` then, `cd bot`
 2. Type `node index.js <username>` 
 
-*The username is the name of `username.json`
+*The username is the name of `username.json`*
