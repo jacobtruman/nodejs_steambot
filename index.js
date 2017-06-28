@@ -90,6 +90,7 @@ var logOptions = {
 	file: logDir + account_config.username + ".txt",
 	date: true,
 	print: true,
+	write_color: true,
 	//log_level: ["success", "error"],
 	log_level: ["all"],
 	prefix: account_config.username
