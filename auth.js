@@ -1,4 +1,4 @@
-#! /usr/bin/env node
+#! /usr/bin/node --use_strict
 
 var fs = require('fs');
 var readline   = require('readline');
@@ -17,6 +17,8 @@ if(args[0]) {
 }
 
 var accountConfigFile = __dirname + "/configs/" + username + ".json";
+
+var account_config;
 
 // account config file
 if (fs.existsSync(accountConfigFile)) {

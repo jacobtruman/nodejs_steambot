@@ -1,4 +1,4 @@
-#! /usr/bin/env node
+#! /usr/bin/node --use_strict
 
 // requires
 var fs = require('fs');
@@ -100,7 +100,7 @@ var myLog = new logger(logOptions);
 
 if(config.admin_accounts) {
 	var sid;
-	for(account in config.admin_accounts) {
+	for(var account in config.admin_accounts) {
 		admin_usernames.push(account);
 		if(config.admin_accounts[account].id != undefined) {
 			sid = new SteamID(config.admin_accounts[account].id);
