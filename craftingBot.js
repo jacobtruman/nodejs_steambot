@@ -576,7 +576,7 @@ function loadMenu() {
 	setTimeout(function() {
 		var menu = "Possible actions:\n";
 		menu += "scrap\n".yellow;
-		menu += "smelt\n".green;
+		menu += "condense\n".green;
 		menu += "delete\n".red;
 		menu += "sort\n".blue;
 		menu += "info\n".cyan;
@@ -597,7 +597,12 @@ function loadMenu() {
 				process.exit();
 			} else if(result.action == "scrap") {
 				steam_webapi.get("IEconItems_440", "GetPlayerItems", 1, options, function(err, response) {
-					if(response !== undefined) {
+					if(err) {
+						if(err.statusCode !== undefined && err.message !== undefined) {
+							myLog.error(err.statusCode + ": " + err.message);
+							loadMenu();
+						}
+					} else if(response !== undefined) {
 						if(response.result !== undefined && response.result.items !== undefined) {
 							var items = response.result.items;
 							groupItems({items: items, grouped_items: null}, function(grouped_items) {
@@ -612,13 +617,18 @@ function loadMenu() {
 						loadMenu();
 					}
 				});
-			} else if(result.action == "smelt") {
+			} else if(result.action == "condense") {
 				steam_webapi.get("IEconItems_440", "GetPlayerItems", 1, options, function(err, response) {
-					if(response !== undefined) {
+					if(err) {
+						if(err.statusCode !== undefined && err.message !== undefined) {
+							myLog.error(err.statusCode + ": " + err.message);
+							loadMenu();
+						}
+					} else if(response !== undefined) {
 						if(response.result !== undefined && response.result.items !== undefined) {
 							var items = response.result.items;
 							groupMetal({items: items, grouped_items: null}, function(grouped_metal) {
-								myLog.info("Smelting");
+								myLog.info("Condensing");
 								craftByGroup(grouped_metal, 3, function() {
 									loadMenu();
 								});
@@ -631,7 +641,12 @@ function loadMenu() {
 				});
 			} else if(result.action == "delete") {
 				steam_webapi.get("IEconItems_440", "GetPlayerItems", 1, options, function(err, response) {
-					if(response !== undefined) {
+					if(err) {
+						if(err.statusCode !== undefined && err.message !== undefined) {
+							myLog.error(err.statusCode + ": " + err.message);
+							loadMenu();
+						}
+					} else if(response !== undefined) {
 						if(response.result !== undefined && response.result.items !== undefined) {
 							var items = response.result.items;
 							myLog.info("Deleting");
@@ -649,7 +664,12 @@ function loadMenu() {
 				});
 			} else if(result.action == "info") {
 				steam_webapi.get("IEconItems_440", "GetPlayerItems", 1, options, function(err, response) {
-					if(response !== undefined) {
+					if(err) {
+						if(err.statusCode !== undefined && err.message !== undefined) {
+							myLog.error(err.statusCode + ": " + err.message);
+							loadMenu();
+						}
+					} else if(response !== undefined) {
 						if(response.result !== undefined && response.result.items !== undefined) {
 							var items = response.result.items;
 							userItemInfo(items, function() {
